@@ -3,126 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brk Dev - Giriş & Kayıt</title>
+    <title>Brk Dev - Giriş Yap</title>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', 'Segoe UI', sans-serif; }
-        body { background: #0a0c14; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; overflow: hidden; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #0a0c14; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        
+        .auth-card { background: #121422; border: 1px solid #1e2238; width: 100%; max-width: 400px; padding: 35px; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
+        .auth-brand { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 25px; }
+        .auth-brand img { width: 45px; height: 45px; border-radius: 8px; object-fit: cover; }
+        .auth-brand h2 { font-size: 22px; color: #5865f2; }
 
-        .auth-card { background: rgba(22, 25, 41, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(88, 101, 242, 0.2); padding: 40px; border-radius: 16px; width: 100%; max-width: 420px; box-shadow: 0 15px 35px rgba(0,0,0,0.6); }
-        .logo-box { text-align: center; margin-bottom: 20px; }
-        .logo-box img { width: 75px; height: 75px; border-radius: 50%; border: 2px solid #5865f2; box-shadow: 0 0 15px rgba(88, 101, 242, 0.5); }
-        .auth-card h2 { text-align: center; margin-bottom: 20px; color: #fff; font-size: 24px; font-weight: 700; }
+        .input-box { margin-bottom: 16px; text-align: left; }
+        .input-box label { display: block; font-size: 12px; color: #8e92a8; margin-bottom: 6px; font-weight: 600; }
+        .input-box input { width: 100%; padding: 12px; background: #0a0c14; border: 1px solid #1e2238; border-radius: 8px; color: #fff; outline: none; }
+        .input-box input:focus { border-color: #5865f2; }
 
-        .input-group { margin-bottom: 18px; }
-        .input-group label { display: block; margin-bottom: 8px; font-size: 12px; color: #8e92a8; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
-        .input-group input { width: 100%; padding: 12px 16px; background: #0e101d; border: 1px solid #23273a; border-radius: 8px; color: #fff; outline: none; transition: 0.3s; }
-        .input-group input:focus { border-color: #5865f2; box-shadow: 0 0 8px rgba(88, 101, 242, 0.4); }
+        .btn { width: 100%; padding: 12px; background: #5865f2; border: none; border-radius: 8px; color: #fff; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; }
+        .btn:hover { background: #4752c4; }
 
-        .btn-submit { width: 100%; padding: 13px; background: linear-gradient(135deg, #5865f2, #4752c4); border: none; border-radius: 8px; color: #fff; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; font-size: 15px; }
-        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(88, 101, 242, 0.4); }
+        .toggle-btn { margin-top: 18px; font-size: 13px; color: #8e92a8; cursor: pointer; }
+        .toggle-btn span { color: #5865f2; font-weight: bold; }
 
-        .toggle-link { text-align: center; margin-top: 20px; font-size: 14px; color: #8e92a8; cursor: pointer; }
-        .toggle-link span { color: #5865f2; font-weight: bold; }
-
-        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
-        .toast { background: #181b2e; border-left: 4px solid #5865f2; color: #fff; padding: 14px 20px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 12px; min-width: 280px; animation: slideIn 0.3s forwards; }
-        .toast.success { border-left-color: #2ecc71; }
-        .toast.error { border-left-color: #e74c3c; }
-
-        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
+        .toast { background: #121422; border-left: 4px solid #e74c3c; color: #fff; padding: 14px 20px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
     </style>
 </head>
 <body>
 
     <div id="toast-container"></div>
 
-    <div class="auth-card" id="login-box">
-        <div class="logo-box">
-            <img src="https://cdn.discordapp.com/embed/avatars/0.png" id="brand-logo" alt="Brk Dev">
+    <div class="auth-card">
+        <div class="auth-brand">
+            <img src="/logo.png" alt="Brk Dev Logo" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+            <h2>Brk Dev</h2>
         </div>
-        <h2>Brk Dev Panel</h2>
-        <div class="input-group">
-            <label>Kullanıcı Adı</label>
-            <input type="text" id="login-user" placeholder="Kullanıcı adınızı girin">
-        </div>
-        <div class="input-group">
-            <label>Şifre</label>
-            <input type="password" id="login-pass" placeholder="••••••••">
-        </div>
-        <button class="btn-submit" onclick="login()">Giriş Yap</button>
-        <div class="toggle-link" onclick="toggleAuth(true)">Hesabın yok mu? <span>Kayıt Ol</span></div>
-    </div>
 
-    <div class="auth-card" id="register-box" style="display: none;">
-        <div class="logo-box">
-            <img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Brk Dev">
-        </div>
-        <h2>Kayıt Ol</h2>
-        <div class="input-group">
+        <h3 id="auth-title" style="margin-bottom: 20px; font-size: 18px;">Hesabınıza Giriş Yapın</h3>
+
+        <div class="input-box">
             <label>Kullanıcı Adı</label>
-            <input type="text" id="reg-user" placeholder="Kullanıcı adınız">
+            <input type="text" id="username" placeholder="Kullanıcı adınızı girin">
         </div>
-        <div class="input-group">
-            <label>Şifre (6 - 24 Karakter)</label>
-            <input type="password" id="reg-pass" maxlength="24" placeholder="••••••••">
+
+        <div class="input-box">
+            <label>Şifre</label>
+            <input type="password" id="password" placeholder="Şifrenizi girin">
         </div>
-        <button class="btn-submit" onclick="register()">Kayıt İşlemini Tamamla</button>
-        <div class="toggle-link" onclick="toggleAuth(false)">Hesabın var mı? <span>Giriş Yap</span></div>
+
+        <button class="btn" id="submit-btn" onclick="handleAuth()">Giriş Yap</button>
+
+        <div class="toggle-btn" onclick="toggleMode()">
+            <span id="toggle-text">Hesabınız yok mu? Kayıt Olun</span>
+        </div>
     </div>
 
     <script>
-        function showToast(msg, type = 'success') {
+        let isLogin = true;
+
+        function showToast(msg) {
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
-            toast.className = `toast ${type}`;
-            toast.innerHTML = `<i class="fa-solid ${type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation'}"></i> <div>${msg}</div>`;
+            toast.className = 'toast';
+            toast.innerText = msg;
             container.appendChild(toast);
             setTimeout(() => toast.remove(), 3500);
         }
 
-        function toggleAuth(isRegister) {
-            document.getElementById('login-box').style.display = isRegister ? 'none' : 'block';
-            document.getElementById('register-box').style.display = isRegister ? 'block' : 'none';
+        function toggleMode() {
+            isLogin = !isLogin;
+            document.getElementById('auth-title').innerText = isLogin ? 'Hesabınıza Giriş Yapın' : 'Yeni Hesap Oluşturun';
+            document.getElementById('submit-btn').innerText = isLogin ? 'Giriş Yap' : 'Kayıt Ol';
+            document.getElementById('toggle-text').innerText = isLogin ? 'Hesabınız yok mu? Kayıt Olun' : 'Zaten hesabınız var mı? Giriş Yapın';
         }
 
-        async function register() {
-            const username = document.getElementById('reg-user').value.trim();
-            const password = document.getElementById('reg-pass').value;
+        async function handleAuth() {
+            const username = document.getElementById('username').value.trim();
+            const password = document.getElementById('password').value;
 
-            const res = await fetch('/api/register', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
-
-            const data = await res.json();
-            if (res.ok) {
-                localStorage.setItem('brk_token', data.token);
-                showToast('Kayıt Başarılı! Yönlendiriliyorsunuz...', 'success');
-                setTimeout(() => window.location.href = '/index.html', 800);
-            } else {
-                showToast(data.error, 'error');
+            if (!username || !password) {
+                return showToast('Lütfen tüm alanları doldurun!');
             }
-        }
 
-        async function login() {
-            const username = document.getElementById('login-user').value.trim();
-            const password = document.getElementById('login-pass').value;
-
-            const res = await fetch('/api/login', {
+            const endpoint = isLogin ? '/api/login' : '/api/register';
+            const res = await fetch(endpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ username, password })
             });
 
             const data = await res.json();
+
             if (res.ok) {
                 localStorage.setItem('brk_token', data.token);
-                showToast('Giriş Başarılı!', 'success');
-                setTimeout(() => window.location.href = '/index.html', 800);
+                window.location.href = '/index.html';
             } else {
-                showToast(data.error, 'error');
+                showToast(data.error);
             }
         }
     </script>

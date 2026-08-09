@@ -10,8 +10,8 @@
         body { background: #0a0c14; color: #fff; display: flex; min-height: 100vh; }
 
         .sidebar { width: 270px; background: #121422; border-right: 1px solid #1e2238; display: flex; flex-direction: column; }
-        .sidebar-brand { padding: 24px; font-size: 20px; font-weight: bold; color: #5865f2; border-bottom: 1px solid #1e2238; display: flex; align-items: center; gap: 12px; }
-        .sidebar-brand img { width: 35px; height: 35px; border-radius: 50%; border: 1px solid #5865f2; }
+        .sidebar-brand { padding: 20px 24px; font-size: 20px; font-weight: bold; color: #5865f2; border-bottom: 1px solid #1e2238; display: flex; align-items: center; gap: 12px; }
+        .sidebar-brand img { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; }
 
         .sidebar-menu { list-style: none; padding: 20px 0; flex: 1; }
         .sidebar-menu li a { display: flex; align-items: center; gap: 12px; padding: 14px 24px; color: #8e92a8; text-decoration: none; font-weight: 600; transition: 0.3s; }
@@ -47,6 +47,8 @@
         .btn:hover { background: #4752c4; }
         .btn-success { background: #2ecc71; }
         .btn-success:hover { background: #27ae60; }
+        .btn-danger { background: #e74c3c; }
+        .btn-danger:hover { background: #c0392b; }
 
         #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; display: flex; flex-direction: column; gap: 10px; }
         .toast { background: #121422; border-left: 4px solid #5865f2; color: #fff; padding: 14px 20px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); display: flex; align-items: center; gap: 12px; min-width: 280px; }
@@ -60,7 +62,7 @@
 
     <div class="sidebar">
         <div class="sidebar-brand">
-            <img src="https://cdn.discordapp.com/embed/avatars/0.png" alt="Brk Dev Logo">
+            <img src="/logo.png" alt="Brk Dev Logo" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
             <span>Brk Dev</span>
         </div>
         <ul class="sidebar-menu">
@@ -85,27 +87,37 @@
             </div>
         </div>
 
-        <!-- ÜYE BİLGİLENDİRME UYARISI -->
         <div id="uye-notice" class="notice-card" style="display: none;">
             <h4><i class="fa-solid fa-circle-info"></i> Üye Statüsündesiniz</h4>
             <p style="font-size: 13px; color: #a0a5b5; margin-top: 5px;">
-                Bot sistemini kullanabilmek ve sunucu ayarlarını yapılandırabilmek için paket satın almanız gerekmektedir. Aşağıdaki paket hesaplayıcıdan EUR bakiyeniz ile satın alım yapabilirsiniz.
+                Bot sistemini kullanabilmek ve sunucu ayarlarınızı kaydetmek için paket satın almanız gerekmektedir.
             </p>
         </div>
 
         <div class="grid-container">
             
-            <!-- MÜŞTERİ / ADMIN BOT PANELİ -->
+            <!-- AKTİF BOT VE BAŞLATMA PANELİ -->
             <div class="card customer-only" style="display: none;">
-                <h3><i class="fa-solid fa-robot" style="color: #5865f2;"></i> Aktif Bot Durumu</h3>
-                <div class="progress-bg" style="margin-top: 15px;">
+                <h3><i class="fa-solid fa-robot" style="color: #5865f2;"></i> Bot Kontrol Paneli</h3>
+                <div class="progress-bg" style="margin-top: 10px;">
                     <div class="progress-fill" id="bot-progress"></div>
                     <div class="progress-text" id="bot-progress-text">0 / 0 Bot</div>
                 </div>
-                <p style="margin-top: 20px; font-size: 13px; color: #8e92a8;">Kalan Paket Süresi: <b id="expiry-text" style="color: #fff;">-</b></p>
+                <p style="margin-top: 10px; font-size: 13px; color: #8e92a8;">Kalan Paket Süresi: <b id="expiry-text" style="color: #fff;">-</b></p>
+
+                <div style="margin-top: 20px; border-top: 1px solid #1e2238; padding-top: 15px;">
+                    <div class="input-box">
+                        <label>Sokulacak Bot Sayısı</label>
+                        <input type="number" id="start-bot-count" placeholder="Örn: 20" min="1">
+                    </div>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn btn-success" onclick="startBots()"><i class="fa-solid fa-play"></i> Başlat</button>
+                        <button class="btn btn-danger" onclick="stopBots()"><i class="fa-solid fa-stop"></i> Durdur</button>
+                    </div>
+                </div>
             </div>
 
-            <!-- MÜŞTERİ / ADMIN SUNUCU AYARLARI -->
+            <!-- SUNUCU AYARLARI -->
             <div class="card customer-only" style="display: none;">
                 <h3><i class="fa-solid fa-server" style="color: #5865f2;"></i> Sunucu Ayarları</h3>
                 <div class="input-box">
@@ -119,7 +131,7 @@
                 <button class="btn" onclick="saveServerInfo()">Ayarları Kaydet</button>
             </div>
 
-            <!-- SATIN ALMA / PAKET HESAPLAYICI (HERKESE AÇIK) -->
+            <!-- EUR İLE PAKET SATIN ALMA -->
             <div class="card">
                 <h3><i class="fa-solid fa-cart-shopping" style="color: #2ecc71;"></i> EUR İle Paket Satın Al</h3>
                 <div class="input-box">
@@ -134,7 +146,7 @@
                         <option value="90">3 Aylık (90 Gün)</option>
                     </select>
                 </div>
-                <p style="font-size: 16px; margin: 15px 0;">Toplam Tutar: <b id="calc-price" style="color: #2ecc71; font-size: 20px;">0 €</b></p>
+                <p style="font-size: 16px; margin: 15px 0;">Toplam Tutar: <b id="calc-price" style="color: #2ecc71; font-size: 20px;">10.00 €</b></p>
                 <button class="btn btn-success" onclick="buyPackage()"><i class="fa-solid fa-bolt"></i> Bakiyeyle Satın Al</button>
             </div>
 
@@ -188,9 +200,7 @@
 
     <script>
         const token = localStorage.getItem('brk_token');
-        if (!token) {
-            window.location.href = '/login.html';
-        }
+        if (!token) window.location.href = '/login.html';
 
         function showToast(msg, type = 'success') {
             const container = document.getElementById('toast-container');
@@ -220,7 +230,6 @@
                 roleBadge.innerText = currentUser.role.toUpperCase();
                 roleBadge.className = `role-badge role-${currentUser.role}`;
 
-                // YETKİLENDİRME VE GÖRÜNÜRLÜK KONTROLÜ
                 if (currentUser.role === 'admin' || currentUser.role === 'superadmin') {
                     document.getElementById('admin-nav').style.display = 'block';
                     document.getElementById('admin-section').style.display = 'block';
@@ -250,8 +259,57 @@
         function calculatePrice() {
             let bots = parseInt(document.getElementById('calc-bots').value) || 0;
             let days = parseInt(document.getElementById('calc-days').value) || 0;
-            let price = (bots * 1) * (days / 30); // Örn: 10 Bot / Ay = 10€
+            let price = (bots * 1) * (days / 30);
             document.getElementById('calc-price').innerText = price.toFixed(2) + ' €';
+        }
+
+        async function saveServerInfo() {
+            const server_ip = document.getElementById('srv-ip').value;
+            const cfx_link = document.getElementById('srv-cfx').value;
+
+            const res = await fetch('/api/user/update-server', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ server_ip, cfx_link })
+            });
+
+            const data = await res.json();
+            if (res.ok) showToast(data.message, 'success');
+            else showToast(data.error, 'error');
+        }
+
+        async function startBots() {
+            const count = parseInt(document.getElementById('start-bot-count').value);
+            if (!count || count <= 0) return showToast('Lütfen geçerli bir bot sayısı girin!', 'error');
+
+            const res = await fetch('/api/bot/start', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ count })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                showToast(data.message, 'success');
+                init();
+            } else {
+                showToast(data.error, 'error');
+            }
+        }
+
+        async function stopBots() {
+            const res = await fetch('/api/bot/stop', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token }
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                showToast(data.message, 'success');
+                init();
+            } else {
+                showToast(data.error, 'error');
+            }
         }
 
         async function buyPackage() {
@@ -274,26 +332,11 @@
             }
         }
 
-        async function saveServerInfo() {
-            const server_ip = document.getElementById('srv-ip').value;
-            const cfx_link = document.getElementById('srv-cfx').value;
-
-            const res = await fetch('/api/user/update-server', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
-                body: JSON.stringify({ server_ip, cfx_link })
-            });
-
-            const data = await res.json();
-            if (res.ok) showToast(data.message, 'success');
-            else showToast(data.error, 'error');
-        }
-
         async function setRole() {
             const targetUsername = document.getElementById('adm-target-user').value.trim();
             const newRole = document.getElementById('adm-new-role').value;
 
-            if (!targetUsername) return showToast('Lütfen kullanıcı adı girin!', 'error');
+            if (!targetUsername) return showToast('Kullanıcı adı giriniz!', 'error');
 
             const res = await fetch('/api/admin/set-role', {
                 method: 'POST',
@@ -315,7 +358,7 @@
             const max_bots = parseInt(document.getElementById('grant-bots').value);
             const expiry_date = document.getElementById('grant-date').value;
 
-            if (!targetUsername || isNaN(max_bots) || !expiry_date) return showToast('Lütfen tüm alanları doldurun!', 'error');
+            if (!targetUsername || isNaN(max_bots) || !expiry_date) return showToast('Tüm alanları doldurun!', 'error');
 
             const res = await fetch('/api/admin/grant-bots', {
                 method: 'POST',
@@ -336,7 +379,7 @@
             const targetUsername = document.getElementById('bal-user').value.trim();
             const amount = parseFloat(document.getElementById('bal-amount').value);
 
-            if (!targetUsername || isNaN(amount)) return showToast('Lütfen kullanıcı adı ve miktar girin!', 'error');
+            if (!targetUsername || isNaN(amount)) return showToast('Geçerli kullanıcı adı ve miktar girin!', 'error');
 
             const res = await fetch('/api/admin/add-balance', {
                 method: 'POST',
