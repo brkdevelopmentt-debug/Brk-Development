@@ -8,7 +8,7 @@ const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const HOST = '0.0.0.0'; // Tüm ağ arayüzlerini dinler
+const HOST = '0.0.0.0';
 const JWT_SECRET = 'brk_devs_super_secret_key_2026';
 
 app.use(express.json());
@@ -18,7 +18,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // SQLite Veritabanı
 const db = new sqlite3.Database('./database.sqlite', (err) => {
     if (err) console.error('DB Bağlantı Hatası:', err);
-    else console.log('SQLite Veritabanı Bağlantısı Başarılı.');
+    else console.log('SQLite Veritabanı Hazır.');
 });
 
 function generateUniqueApiKey() {
@@ -54,13 +54,29 @@ db.serialize(() => {
         [defaultPass, adminKey, JSON.stringify(defaultBotNames)]);
 });
 
+// KULLANICI MİDDLEWARE
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Oturum süresi doldu!' });
+    if (!token) return res.status(401).json({ error: 'Oturum açmanız gerekiyor!' });
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
         if (err) return res.status(403).json({ error: 'Geçersiz token!' });
+        req.user = user;
+        next();
+    });
+}
+
+// SUPERADMIN MİDDLEWARE
+function authenticateAdmin(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Oturum açmanız gerekiyor!' });
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err || user.role !== 'superadmin') {
+            return res.status(403).json({ error: 'Bu işlem için superadmin yetkisi gereklidir!' });
+        }
         req.user = user;
         next();
     });
@@ -70,7 +86,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// FIVEM SUNUCUSUNUN BOT VERİLERİNİ ÇEKTİĞİ ENDPOINT
+// FIVEM BOT SYNC
 app.get('/api/bot/server-sync', (req, res) => {
     const apiKey = req.query.key;
     if (!apiKey) return res.status(400).json({ error: 'API Key eksik!' });
@@ -145,6 +161,7 @@ app.get('/api/me', authenticateToken, (req, res) => {
     });
 });
 
+// BOT BAŞLAT / DURDUR
 app.post('/api/bot/start', authenticateToken, (req, res) => {
     const { count } = req.body;
     const botCount = parseInt(count);
@@ -170,10 +187,75 @@ app.post('/api/bot/stop', authenticateToken, (req, res) => {
     });
 });
 
+// --- YÖNETİCİ & BAKİYE ENDPOINT'LERİ ---
+
+// ADMIN: BAKİYE YÜKLE
+app.post('/api/admin/add-balance', authenticateAdmin, (req, res) => {
+    const { username, amount } = req.body;
+    const addAmount = parseFloat(amount);
+
+    if (!username || isNaN(addAmount) || addAmount <= 0) {
+        return res.status(400).json({ error: 'Kullanıcı adı ve geçerli bir tutar giriniz!' });
+    }
+
+    db.get(`SELECT * FROM users WHERE LOWER(username) = LOWER(?)`, [username.trim()], (err, user) => {
+        if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
+
+        const newBalance = (user.balance || 0) + addAmount;
+        db.run(`UPDATE users SET balance = ? WHERE id = ?`, [newBalance, user.id], (err) => {
+            if (err) return res.status(500).json({ error: 'Bakiye yüklenemedi!' });
+            res.json({ success: true, message: `${user.username} kullanıcısına ${addAmount}€ eklendi. Güncel Bakiye: ${newBalance}€` });
+        });
+    });
+});
+
+// ADMIN: MANUEL BOT & SÜRE TANIMLA
+app.post('/api/admin/set-package', authenticateAdmin, (req, res) => {
+    const { username, maxBots, expiryDate } = req.body;
+    const botCount = parseInt(maxBots);
+
+    if (!username || isNaN(botCount) || !expiryDate) {
+        return res.status(400).json({ error: 'Tüm alanları doldurunuz!' });
+    }
+
+    db.get(`SELECT * FROM users WHERE LOWER(username) = LOWER(?)`, [username.trim()], (err, user) => {
+        if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
+
+        db.run(`UPDATE users SET max_bots = ?, expiry_date = ? WHERE id = ?`, [botCount, expiryDate, user.id], (err) => {
+            if (err) return res.status(500).json({ error: 'Paket tanımlanamadı!' });
+            res.json({ success: true, message: `${user.username} hesabına ${botCount} bot ve ${expiryDate} tarihi tanımlandı.` });
+        });
+    });
+});
+
+// KULLANICI: BAKİYEYLE SATIN AL
+app.post('/api/user/buy-package', authenticateToken, (req, res) => {
+    const price = 10.0; // 1 Aylık standart ücret (10.00 €)
+    const defaultBots = 50;
+
+    db.get(`SELECT * FROM users WHERE id = ?`, [req.user.id], (err, user) => {
+        if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
+        if ((user.balance || 0) < price) {
+            return res.status(400).json({ error: 'Yetersiz bakiye! Lütfen bakiyenizi yükleyin.' });
+        }
+
+        const newBalance = user.balance - price;
+        const expDate = new Date();
+        expDate.setDate(expDate.getDate() + 30);
+        const formattedDate = expDate.toISOString().split('T')[0];
+
+        db.run(`UPDATE users SET balance = ?, max_bots = ?, expiry_date = ? WHERE id = ?`, 
+            [newBalance, defaultBots, formattedDate, user.id], (err) => {
+            if (err) return res.status(500).json({ error: 'Satın alma işlemi başarısız!' });
+            res.json({ success: true, message: 'Paket başarıyla satın alındı!' });
+        });
+    });
+});
+
 app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
 app.listen(PORT, HOST, () => {
-    console.log(`[Brk Dev] Sunucu http://localhost:${PORT} adresi üzerinde aktif.`);
+    console.log(`[Brk Dev] Sunucu http://localhost:${PORT} adresi üzerinde çalışıyor.`);
 });
