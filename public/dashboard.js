@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             if (document.getElementById('displayMaxBots')) document.getElementById('displayMaxBots').innerText = user.max_bots;
             if (document.getElementById('displayActiveBots')) document.getElementById('displayActiveBots').innerText = user.used_bots;
         } catch (e) {
-            console.error('Veri çekme hatası', e);
+            console.error('Veri yükleme hatası:', e);
         }
     }
 
@@ -51,9 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         btnStop.addEventListener('click', async () => {
             const res = await fetch('/api/bot/stop', {
                 method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
+                headers: { 'Authorization': `Bearer ${token}` }
             });
             const data = await res.json();
             alert(data.message || data.error);

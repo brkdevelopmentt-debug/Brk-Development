@@ -8,7 +8,7 @@ const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const HOST = '0.0.0.0';
+const HOST = '0.0.0.0'; // Tüm ağ arayüzlerini dinler
 const JWT_SECRET = 'brk_devs_super_secret_key_2026';
 
 app.use(express.json());
@@ -18,7 +18,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 // SQLite Veritabanı
 const db = new sqlite3.Database('./database.sqlite', (err) => {
     if (err) console.error('DB Bağlantı Hatası:', err);
-    else console.log('SQLite Veritabanı Hazır.');
+    else console.log('SQLite Veritabanı Bağlantısı Başarılı.');
 });
 
 function generateUniqueApiKey() {
@@ -175,5 +175,5 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, HOST, () => {
-    console.log(`[Brk Dev] Sunucu http://localhost:${PORT} üzerinde aktif.`);
+    console.log(`[Brk Dev] Sunucu http://localhost:${PORT} adresi üzerinde aktif.`);
 });
