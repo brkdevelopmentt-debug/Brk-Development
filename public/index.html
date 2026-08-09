@@ -74,7 +74,7 @@
         <div class="header">
             <h2>Yönetim Paneli</h2>
             <div class="user-info-box">
-                <div class="balance-badge"><i class="fa-solid fa-wallet"></i> <span id="ui-balance">0.00</span> TL</div>
+                <div class="balance-badge"><i class="fa-solid fa-wallet"></i> <span id="ui-balance">0.00</span> €</div>
                 <div class="user-card">
                     <i class="fa-solid fa-circle-user fa-xl" style="color: #5865f2;"></i>
                     <div>
@@ -89,7 +89,7 @@
         <div id="uye-notice" class="notice-card" style="display: none;">
             <h4><i class="fa-solid fa-circle-info"></i> Üye Statüsündesiniz</h4>
             <p style="font-size: 13px; color: #a0a5b5; margin-top: 5px;">
-                Bot sistemini kullanabilmek ve sunucu ayarlarını yapılandırabilmek için paket satın almanız gerekmektedir. Aşağıdaki paket hesaplayıcıdan TL ile satın alım yapabilirsiniz.
+                Bot sistemini kullanabilmek ve sunucu ayarlarını yapılandırabilmek için paket satın almanız gerekmektedir. Aşağıdaki paket hesaplayıcıdan EUR bakiyeniz ile satın alım yapabilirsiniz.
             </p>
         </div>
 
@@ -121,7 +121,7 @@
 
             <!-- SATIN ALMA / PAKET HESAPLAYICI (HERKESE AÇIK) -->
             <div class="card">
-                <h3><i class="fa-solid fa-cart-shopping" style="color: #2ecc71;"></i> TL İle Paket Satın Al</h3>
+                <h3><i class="fa-solid fa-cart-shopping" style="color: #2ecc71;"></i> EUR İle Paket Satın Al</h3>
                 <div class="input-box">
                     <label>Bot Adedi</label>
                     <input type="number" id="calc-bots" value="10" min="5" max="200" onchange="calculatePrice()" onkeyup="calculatePrice()">
@@ -134,7 +134,7 @@
                         <option value="90">3 Aylık (90 Gün)</option>
                     </select>
                 </div>
-                <p style="font-size: 16px; margin: 15px 0;">Toplam Tutar: <b id="calc-price" style="color: #2ecc71; font-size: 20px;">0 TL</b></p>
+                <p style="font-size: 16px; margin: 15px 0;">Toplam Tutar: <b id="calc-price" style="color: #2ecc71; font-size: 20px;">0 €</b></p>
                 <button class="btn btn-success" onclick="buyPackage()"><i class="fa-solid fa-bolt"></i> Bakiyeyle Satın Al</button>
             </div>
 
@@ -173,12 +173,12 @@
                     <button class="btn" onclick="grantBots()">Paket Tanımla</button>
                 </div>
                 <div>
-                    <h4 style="margin-bottom: 10px; font-size: 14px; color: #8e92a8;">Bakiye Yükle (TL)</h4>
+                    <h4 style="margin-bottom: 10px; font-size: 14px; color: #8e92a8;">Bakiye Yükle (EUR)</h4>
                     <div class="input-box">
                         <input type="text" id="bal-user" placeholder="Kullanıcı Adı">
                     </div>
                     <div class="input-box">
-                        <input type="number" id="bal-amount" placeholder="Miktar (TL)">
+                        <input type="number" id="bal-amount" placeholder="Miktar (€)">
                     </div>
                     <button class="btn btn-success" onclick="addBalance()">Bakiye Yükle</button>
                 </div>
@@ -250,14 +250,14 @@
         function calculatePrice() {
             let bots = parseInt(document.getElementById('calc-bots').value) || 0;
             let days = parseInt(document.getElementById('calc-days').value) || 0;
-            let price = (bots * 15) * (days / 30);
-            document.getElementById('calc-price').innerText = Math.round(price) + ' TL';
+            let price = (bots * 1) * (days / 30); // Örn: 10 Bot / Ay = 10€
+            document.getElementById('calc-price').innerText = price.toFixed(2) + ' €';
         }
 
         async function buyPackage() {
             let bots = parseInt(document.getElementById('calc-bots').value) || 0;
             let days = parseInt(document.getElementById('calc-days').value) || 0;
-            let totalPrice = Math.round((bots * 15) * (days / 30));
+            let totalPrice = parseFloat((bots * 1) * (days / 30));
 
             const res = await fetch('/api/user/buy-package', {
                 method: 'POST',
@@ -290,8 +290,10 @@
         }
 
         async function setRole() {
-            const targetUsername = document.getElementById('adm-target-user').value;
+            const targetUsername = document.getElementById('adm-target-user').value.trim();
             const newRole = document.getElementById('adm-new-role').value;
+
+            if (!targetUsername) return showToast('Lütfen kullanıcı adı girin!', 'error');
 
             const res = await fetch('/api/admin/set-role', {
                 method: 'POST',
@@ -300,14 +302,20 @@
             });
 
             const data = await res.json();
-            if (res.ok) showToast(data.message, 'success');
-            else showToast(data.error, 'error');
+            if (res.ok) {
+                showToast(data.message, 'success');
+                if (targetUsername.toLowerCase() === currentUser.username.toLowerCase()) setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.error, 'error');
+            }
         }
 
         async function grantBots() {
-            const targetUsername = document.getElementById('grant-user').value;
-            const max_bots = document.getElementById('grant-bots').value;
+            const targetUsername = document.getElementById('grant-user').value.trim();
+            const max_bots = parseInt(document.getElementById('grant-bots').value);
             const expiry_date = document.getElementById('grant-date').value;
+
+            if (!targetUsername || isNaN(max_bots) || !expiry_date) return showToast('Lütfen tüm alanları doldurun!', 'error');
 
             const res = await fetch('/api/admin/grant-bots', {
                 method: 'POST',
@@ -316,13 +324,19 @@
             });
 
             const data = await res.json();
-            if (res.ok) showToast(data.message, 'success');
-            else showToast(data.error, 'error');
+            if (res.ok) {
+                showToast(data.message, 'success');
+                if (targetUsername.toLowerCase() === currentUser.username.toLowerCase()) setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.error, 'error');
+            }
         }
 
         async function addBalance() {
-            const targetUsername = document.getElementById('bal-user').value;
+            const targetUsername = document.getElementById('bal-user').value.trim();
             const amount = parseFloat(document.getElementById('bal-amount').value);
+
+            if (!targetUsername || isNaN(amount)) return showToast('Lütfen kullanıcı adı ve miktar girin!', 'error');
 
             const res = await fetch('/api/admin/add-balance', {
                 method: 'POST',
@@ -331,8 +345,12 @@
             });
 
             const data = await res.json();
-            if (res.ok) showToast(data.message, 'success');
-            else showToast(data.error, 'error');
+            if (res.ok) {
+                showToast(data.message, 'success');
+                if (targetUsername.toLowerCase() === currentUser.username.toLowerCase()) setTimeout(() => location.reload(), 1000);
+            } else {
+                showToast(data.error, 'error');
+            }
         }
 
         function logout() {

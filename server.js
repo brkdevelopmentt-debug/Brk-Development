@@ -36,9 +36,7 @@ db.serialize(() => {
     // Varsayılan Superadminler
     const defaultPass = bcrypt.hashSync('admin123', 10);
     db.run(`INSERT OR IGNORE INTO users (id, username, password, role) VALUES (1, 'admin', ?, 'superadmin')`, [defaultPass]);
-    
-    // Berke hesabı oluşturulmuşsa otomatik Superadmin yap
-    db.run(`UPDATE users SET role = 'superadmin' WHERE username = 'Berke'`);
+    db.run(`UPDATE users SET role = 'superadmin' WHERE LOWER(username) = 'berke' OR LOWER(username) = 'admin'`);
 });
 
 // TOKEN DOĞRULAMA MIDDLEWARE
@@ -66,7 +64,8 @@ app.post('/api/register', (req, res) => {
     if (password.length < 6 || password.length > 24) return res.status(400).json({ error: 'Şifre 6-24 karakter olmalı!' });
 
     const hash = bcrypt.hashSync(password, 10);
-    const initialRole = (username.toLowerCase() === 'berke' || username.toLowerCase() === 'admin') ? 'superadmin' : 'uye';
+    const lowerUser = username.toLowerCase();
+    const initialRole = (lowerUser === 'berke' || lowerUser === 'admin') ? 'superadmin' : 'uye';
 
     db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, ?)`, [username, hash, initialRole], function(err) {
         if (err) return res.status(400).json({ error: 'Bu kullanıcı adı zaten alınmış!' });
@@ -79,7 +78,7 @@ app.post('/api/register', (req, res) => {
 // LOGIN
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-    db.get(`SELECT * FROM users WHERE username = ?`, [username], (err, user) => {
+    db.get(`SELECT * FROM users WHERE LOWER(username) = LOWER(?)`, [username], (err, user) => {
         if (!user || !bcrypt.compareSync(password, user.password)) {
             return res.status(400).json({ error: 'Kullanıcı adı veya şifre hatalı!' });
         }
@@ -99,18 +98,18 @@ app.get('/api/me', authenticateToken, (req, res) => {
 // SUNUCU AYARI GÜNCELLE
 app.post('/api/user/update-server', authenticateToken, (req, res) => {
     const { server_ip, cfx_link } = req.body;
-    db.run(`UPDATE users SET server_ip = ?, cfx_link = ? WHERE id = ?`, [server_ip, cfx_link, req.user.id], (err) => {
+    db.run(`UPDATE users SET server_ip = ?, cfx_link = ? WHERE id = ?`, [server_ip, cfx_link, req.user.id], function(err) {
         if (err) return res.status(500).json({ error: 'Güncellenemedi!' });
         res.json({ success: true, message: 'Sunucu bilgileri başarıyla kaydedildi.' });
     });
 });
 
-// PAKET SATIN AL
+// PAKET SATIN AL (EUR)
 app.post('/api/user/buy-package', authenticateToken, (req, res) => {
     const { bots, days, totalPrice } = req.body;
     db.get(`SELECT balance FROM users WHERE id = ?`, [req.user.id], (err, user) => {
-        if (user.balance < totalPrice) {
-            return res.status(400).json({ error: 'Yetersiz Bakiye! Lütfen bakiye yükleyin.' });
+        if (!user || user.balance < totalPrice) {
+            return res.status(400).json({ error: 'Yetersiz Bakiye! Lütfen EUR bakiyesi yükleyin.' });
         }
         
         const newBalance = user.balance - totalPrice;
@@ -119,7 +118,7 @@ app.post('/api/user/buy-package', authenticateToken, (req, res) => {
         const formattedDate = expiryDate.toISOString().split('T')[0];
 
         db.run(`UPDATE users SET balance = ?, max_bots = ?, expiry_date = ?, role = 'musteri' WHERE id = ?`, 
-            [newBalance, bots, formattedDate, req.user.id], (err) => {
+            [newBalance, bots, formattedDate, req.user.id], function(err) {
                 if (err) return res.status(500).json({ error: 'Satın alım başarısız.' });
                 res.json({ success: true, message: 'Paket başarıyla satın alındı ve hesabınıza tanımlandı!' });
         });
@@ -130,7 +129,8 @@ app.post('/api/user/buy-package', authenticateToken, (req, res) => {
 app.post('/api/admin/set-role', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ error: 'Yetkisiz Yetkili!' });
     const { targetUsername, newRole } = req.body;
-    db.run(`UPDATE users SET role = ? WHERE username = ?`, [newRole, targetUsername], (err) => {
+    db.run(`UPDATE users SET role = ? WHERE LOWER(username) = LOWER(?)`, [newRole, targetUsername], function(err) {
+        if (err || this.changes === 0) return res.status(404).json({ error: 'Kullanıcı bulunamadı veya güncelleme başarısız!' });
         res.json({ success: true, message: `${targetUsername} kullanıcısının rolü ${newRole} olarak güncellendi.` });
     });
 });
@@ -139,7 +139,8 @@ app.post('/api/admin/set-role', authenticateToken, (req, res) => {
 app.post('/api/admin/grant-bots', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ error: 'Yetkisiz!' });
     const { targetUsername, max_bots, expiry_date } = req.body;
-    db.run(`UPDATE users SET max_bots = ?, expiry_date = ?, role = 'musteri' WHERE username = ?`, [max_bots, expiry_date, targetUsername], (err) => {
+    db.run(`UPDATE users SET max_bots = ?, expiry_date = ?, role = 'musteri' WHERE LOWER(username) = LOWER(?)`, [max_bots, expiry_date, targetUsername], function(err) {
+        if (err || this.changes === 0) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
         res.json({ success: true, message: 'Bot ve süre kullanıcıya başarıyla atandı.' });
     });
 });
@@ -148,8 +149,9 @@ app.post('/api/admin/grant-bots', authenticateToken, (req, res) => {
 app.post('/api/admin/add-balance', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ error: 'Yetkisiz!' });
     const { targetUsername, amount } = req.body;
-    db.run(`UPDATE users SET balance = balance + ? WHERE username = ?`, [amount, targetUsername], (err) => {
-        res.json({ success: true, message: 'Bakiye yüklendi.' });
+    db.run(`UPDATE users SET balance = balance + ? WHERE LOWER(username) = LOWER(?)`, [amount, targetUsername], function(err) {
+        if (err || this.changes === 0) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
+        res.json({ success: true, message: `${targetUsername} kullanıcısına ${amount} EUR bakiye yüklendi.` });
     });
 });
 
