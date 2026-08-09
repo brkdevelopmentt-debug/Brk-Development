@@ -5,105 +5,93 @@ document.addEventListener('DOMContentLoaded', async () => {
         return;
     }
 
-    // Kullanıcı Bilgilerini Çekme
     async function loadUserData() {
         try {
-            const res = await fetch('/api/me', {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-
+            const res = await fetch('/api/me', { headers: { 'Authorization': `Bearer ${token}` } });
             if (!res.ok) {
                 localStorage.removeItem('token');
                 window.location.href = '/login.html';
                 return;
             }
-
             const user = await res.json();
+            
+            // Verileri Yazdır
+            if (document.getElementById('lblUsername')) document.getElementById('lblUsername').innerText = user.username;
+            if (document.getElementById('lblBalance')) document.getElementById('lblBalance').innerText = (user.balance || 0).toFixed(2) + ' €';
+            if (document.getElementById('displayApiKey')) document.getElementById('displayApiKey').innerText = user.api_key || 'Yok';
+            if (document.getElementById('displayMaxBots')) document.getElementById('displayMaxBots').innerText = user.max_bots;
+            if (document.getElementById('displayActiveBots')) document.getElementById('displayActiveBots').innerText = user.used_bots;
 
-            document.getElementById('lblUsername').innerText = user.username;
-            document.getElementById('lblBalance').innerText = (user.balance || 0).toFixed(2) + ' €';
-
-            // Admin Değilse Admin Panelini Gizle
+            // Admin Paneli Gizle/Göster
             const adminBlock = document.getElementById('adminPanelBlock');
             if (adminBlock) {
                 adminBlock.style.display = (user.role === 'superadmin') ? 'block' : 'none';
             }
-        } catch (e) {
-            console.error('Kullanıcı verisi alınamadı:', e);
-        }
+        } catch (e) { console.error(e); }
     }
 
-    // 1. BAKİYEYLE SATIN AL
-    const btnBuyPackage = document.getElementById('btnBuyPackage');
-    if (btnBuyPackage) {
-        btnBuyPackage.addEventListener('click', async () => {
-            try {
-                const res = await fetch('/api/user/buy-package', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    }
-                });
-                const data = await res.json();
-                alert(data.message || data.error);
-                if (data.success) loadUserData();
-            } catch (err) {
-                alert('İşlem sırasında hata oluştu!');
-            }
+    // Bot Başlat
+    const btnStart = document.getElementById('btnStartBot');
+    if (btnStart) btnStart.addEventListener('click', async () => {
+        const count = document.getElementById('botCountInput').value;
+        const res = await fetch('/api/bot/start', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ count })
         });
-    }
+        const data = await res.json();
+        alert(data.message || data.error);
+        loadUserData();
+    });
 
-    // 2. ADMIN: PAKET TANIMLA
-    const btnAdminSetPackage = document.getElementById('btnAdminSetPackage');
-    if (btnAdminSetPackage) {
-        btnAdminSetPackage.addEventListener('click', async () => {
-            const username = document.getElementById('adminPackageUser').value;
-            const maxBots = document.getElementById('adminPackageBots').value;
-            const expiryDate = document.getElementById('adminPackageDate').value;
+    // Bot Durdur
+    const btnStop = document.getElementById('btnStopBot');
+    if (btnStop) btnStop.addEventListener('click', async () => {
+        const res = await fetch('/api/bot/stop', { method: 'POST', headers: { 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        alert(data.message || data.error);
+        loadUserData();
+    });
 
-            try {
-                const res = await fetch('/api/admin/set-package', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ username, maxBots, expiryDate })
-                });
-                const data = await res.json();
-                alert(data.message || data.error);
-                if (data.success) loadUserData();
-            } catch (err) {
-                alert('Paket tanımlama hatası!');
-            }
+    // Satın Al
+    const btnBuy = document.getElementById('btnBuyPackage');
+    if (btnBuy) btnBuy.addEventListener('click', async () => {
+        const res = await fetch('/api/user/buy-package', { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` } });
+        const data = await res.json();
+        alert(data.message || data.error);
+        loadUserData();
+    });
+
+    // Admin Paket
+    const btnSetPkg = document.getElementById('btnAdminSetPackage');
+    if (btnSetPkg) btnSetPkg.addEventListener('click', async () => {
+        const username = document.getElementById('adminPackageUser').value;
+        const maxBots = document.getElementById('adminPackageBots').value;
+        const expiryDate = document.getElementById('adminPackageDate').value;
+        const res = await fetch('/api/admin/set-package', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ username, maxBots, expiryDate })
         });
-    }
+        const data = await res.json();
+        alert(data.message || data.error);
+        loadUserData();
+    });
 
-    // 3. ADMIN: BAKİYE YÜKLE
-    const btnAdminAddBalance = document.getElementById('btnAdminAddBalance');
-    if (btnAdminAddBalance) {
-        btnAdminAddBalance.addEventListener('click', async () => {
-            const username = document.getElementById('adminBalanceUser').value;
-            const amount = document.getElementById('adminBalanceAmount').value;
-
-            try {
-                const res = await fetch('/api/admin/add-balance', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({ username, amount })
-                });
-                const data = await res.json();
-                alert(data.message || data.error);
-                if (data.success) loadUserData();
-            } catch (err) {
-                alert('Bakiye yükleme hatası!');
-            }
+    // Admin Bakiye
+    const btnAddBal = document.getElementById('btnAdminAddBalance');
+    if (btnAddBal) btnAddBal.addEventListener('click', async () => {
+        const username = document.getElementById('adminBalanceUser').value;
+        const amount = document.getElementById('adminBalanceAmount').value;
+        const res = await fetch('/api/admin/add-balance', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ username, amount })
         });
-    }
+        const data = await res.json();
+        alert(data.message || data.error);
+        loadUserData();
+    });
 
     loadUserData();
 });

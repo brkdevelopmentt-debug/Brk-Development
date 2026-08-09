@@ -54,7 +54,6 @@ db.serialize(() => {
         [defaultPass, adminKey, JSON.stringify(defaultBotNames)]);
 });
 
-// KULLANICI MİDDLEWARE
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -67,7 +66,6 @@ function authenticateToken(req, res, next) {
     });
 }
 
-// SUPERADMIN MİDDLEWARE
 function authenticateAdmin(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -86,7 +84,6 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// FIVEM BOT SYNC
 app.get('/api/bot/server-sync', (req, res) => {
     const apiKey = req.query.key;
     if (!apiKey) return res.status(400).json({ error: 'API Key eksik!' });
@@ -95,29 +92,18 @@ app.get('/api/bot/server-sync', (req, res) => {
         if (err || !user) return res.status(404).json({ error: 'Geçersiz API Key!' });
 
         let names = [];
-        try {
-            names = JSON.parse(user.bot_names || '[]');
-        } catch (e) {
-            names = defaultBotNames;
-        }
-
+        try { names = JSON.parse(user.bot_names || '[]'); } catch (e) { names = defaultBotNames; }
         const activeNames = names.slice(0, user.used_bots);
 
-        res.json({
-            success: true,
-            botCount: user.used_bots,
-            botNames: activeNames
-        });
+        res.json({ success: true, botCount: user.used_bots, botNames: activeNames });
     });
 });
 
-// KAYIT OL
 app.post('/api/register', (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Tüm alanları doldurunuz!' });
 
     const cleanUser = username.trim();
-
     db.get(`SELECT id FROM users WHERE LOWER(username) = LOWER(?)`, [cleanUser], (err, existingUser) => {
         if (err) return res.status(500).json({ error: 'Veritabanı hatası!' });
         if (existingUser) return res.status(400).json({ error: 'Bu kullanıcı adı zaten kullanılıyor!' });
@@ -130,42 +116,36 @@ app.post('/api/register', (req, res) => {
         db.run(`INSERT INTO users (username, password, role, api_key, bot_names) VALUES (?, ?, ?, ?, ?)`, 
             [cleanUser, hash, initialRole, userApiKey, JSON.stringify(defaultBotNames)], function(err) {
             if (err) return res.status(500).json({ error: 'Kayıt başarısız!' });
-            
             const token = jwt.sign({ id: this.lastID, username: cleanUser, role: initialRole }, JWT_SECRET, { expiresIn: '7d' });
             res.json({ success: true, token, user: { id: this.lastID, username: cleanUser, role: initialRole }, message: 'Kayıt başarılı!' });
         });
     });
 });
 
-// GİRİŞ YAP
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Kullanıcı adı ve şifre gereklidir!' });
 
     const cleanUser = username.trim();
-
     db.get(`SELECT * FROM users WHERE LOWER(username) = LOWER(?)`, [cleanUser], (err, user) => {
         if (err || !user || !bcrypt.compareSync(password, user.password)) {
             return res.status(400).json({ error: 'Kullanıcı adı veya şifre hatalı!' });
         }
-
         const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
         res.json({ success: true, token, user: { id: user.id, username: user.username, role: user.role }, message: 'Giriş başarılı!' });
     });
 });
 
 app.get('/api/me', authenticateToken, (req, res) => {
-    db.get(`SELECT id, username, role, server_ip, cfx_link, max_bots, used_bots, expiry_date, balance, api_key, bot_names FROM users WHERE id = ?`, [req.user.id], (err, user) => {
+    db.get(`SELECT * FROM users WHERE id = ?`, [req.user.id], (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
         res.json(user);
     });
 });
 
-// BOT BAŞLAT / DURDUR
 app.post('/api/bot/start', authenticateToken, (req, res) => {
     const { count } = req.body;
     const botCount = parseInt(count);
-
     if (isNaN(botCount) || botCount <= 0) return res.status(400).json({ error: 'Geçerli bir sayı giriniz!' });
 
     db.get(`SELECT * FROM users WHERE id = ?`, [req.user.id], (err, user) => {
@@ -187,57 +167,42 @@ app.post('/api/bot/stop', authenticateToken, (req, res) => {
     });
 });
 
-// --- YÖNETİCİ & BAKİYE ENDPOINT'LERİ ---
-
-// ADMIN: BAKİYE YÜKLE
 app.post('/api/admin/add-balance', authenticateAdmin, (req, res) => {
     const { username, amount } = req.body;
     const addAmount = parseFloat(amount);
-
-    if (!username || isNaN(addAmount) || addAmount <= 0) {
-        return res.status(400).json({ error: 'Kullanıcı adı ve geçerli bir tutar giriniz!' });
-    }
+    if (!username || isNaN(addAmount) || addAmount <= 0) return res.status(400).json({ error: 'Geçerli tutar girin!' });
 
     db.get(`SELECT * FROM users WHERE LOWER(username) = LOWER(?)`, [username.trim()], (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
-
         const newBalance = (user.balance || 0) + addAmount;
         db.run(`UPDATE users SET balance = ? WHERE id = ?`, [newBalance, user.id], (err) => {
             if (err) return res.status(500).json({ error: 'Bakiye yüklenemedi!' });
-            res.json({ success: true, message: `${user.username} kullanıcısına ${addAmount}€ eklendi. Güncel Bakiye: ${newBalance}€` });
+            res.json({ success: true, message: `${user.username} kullanıcısına ${addAmount}€ eklendi.` });
         });
     });
 });
 
-// ADMIN: MANUEL BOT & SÜRE TANIMLA
 app.post('/api/admin/set-package', authenticateAdmin, (req, res) => {
     const { username, maxBots, expiryDate } = req.body;
     const botCount = parseInt(maxBots);
-
-    if (!username || isNaN(botCount) || !expiryDate) {
-        return res.status(400).json({ error: 'Tüm alanları doldurunuz!' });
-    }
+    if (!username || isNaN(botCount) || !expiryDate) return res.status(400).json({ error: 'Tüm alanları doldurunuz!' });
 
     db.get(`SELECT * FROM users WHERE LOWER(username) = LOWER(?)`, [username.trim()], (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
-
         db.run(`UPDATE users SET max_bots = ?, expiry_date = ? WHERE id = ?`, [botCount, expiryDate, user.id], (err) => {
             if (err) return res.status(500).json({ error: 'Paket tanımlanamadı!' });
-            res.json({ success: true, message: `${user.username} hesabına ${botCount} bot ve ${expiryDate} tarihi tanımlandı.` });
+            res.json({ success: true, message: `${user.username} hesabına paket tanımlandı.` });
         });
     });
 });
 
-// KULLANICI: BAKİYEYLE SATIN AL
 app.post('/api/user/buy-package', authenticateToken, (req, res) => {
-    const price = 10.0; // 1 Aylık standart ücret (10.00 €)
+    const price = 10.0; 
     const defaultBots = 50;
 
     db.get(`SELECT * FROM users WHERE id = ?`, [req.user.id], (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
-        if ((user.balance || 0) < price) {
-            return res.status(400).json({ error: 'Yetersiz bakiye! Lütfen bakiyenizi yükleyin.' });
-        }
+        if ((user.balance || 0) < price) return res.status(400).json({ error: 'Yetersiz bakiye!' });
 
         const newBalance = user.balance - price;
         const expDate = new Date();
@@ -257,5 +222,5 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, HOST, () => {
-    console.log(`[Brk Dev] Sunucu http://localhost:${PORT} adresi üzerinde çalışıyor.`);
+    console.log(`[Brk Development] Sunucu http://localhost:${PORT} adresinde aktif.`);
 });

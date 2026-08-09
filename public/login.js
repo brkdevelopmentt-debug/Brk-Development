@@ -8,6 +8,7 @@ document.addEventListener('DOMContentLoaded', () => {
         alertBox.style.display = 'block';
         alertBox.className = isError ? 'alert alert-danger' : 'alert alert-success';
         alertBox.innerText = msg;
+        setTimeout(() => alertBox.style.display = 'none', 3000);
     }
 
     if (loginForm) {
@@ -15,29 +16,19 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const username = document.getElementById('loginUsername').value;
             const password = document.getElementById('loginPassword').value;
-
             try {
                 const res = await fetch('/api/login', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
                 });
-
                 const data = await res.json();
-
                 if (res.ok && data.token) {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('user', JSON.stringify(data.user));
-                    showAlert('Giriş başarılı, yönlendiriliyorsunuz...', false);
-                    setTimeout(() => {
-                        window.location.href = '/dashboard.html';
-                    }, 800);
-                } else {
-                    showAlert(data.error || 'Giriş yapılamadı!');
-                }
-            } catch (err) {
-                showAlert('Sunucu hatası oluştu!');
-            }
+                    showAlert('Giriş başarılı, panele aktarılıyorsunuz...', false);
+                    setTimeout(() => window.location.href = '/index.html', 800);
+                } else { showAlert(data.error || 'Giriş yapılamadı!'); }
+            } catch (err) { showAlert('Sunucu hatası!'); }
         });
     }
 
@@ -46,29 +37,19 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
             const username = document.getElementById('regUsername').value;
             const password = document.getElementById('regPassword').value;
-
             try {
                 const res = await fetch('/api/register', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    method: 'POST', headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ username, password })
                 });
-
                 const data = await res.json();
-
                 if (res.ok && data.token) {
                     localStorage.setItem('token', data.token);
                     localStorage.setItem('user', JSON.stringify(data.user));
-                    showAlert('Kayıt başarılı, yönlendiriliyorsunuz...', false);
-                    setTimeout(() => {
-                        window.location.href = '/dashboard.html';
-                    }, 800);
-                } else {
-                    showAlert(data.error || 'Kayıt başarısız!');
-                }
-            } catch (err) {
-                showAlert('Sunucu hatası oluştu!');
-            }
+                    showAlert('Kayıt başarılı, panele aktarılıyorsunuz...', false);
+                    setTimeout(() => window.location.href = '/index.html', 800);
+                } else { showAlert(data.error || 'Kayıt başarısız!'); }
+            } catch (err) { showAlert('Sunucu hatası!'); }
         });
     }
 });
