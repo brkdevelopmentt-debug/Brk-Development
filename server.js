@@ -8,7 +8,7 @@ const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const HOST = '0.0.0.0'; // Localhost ve IP erişimi için
+const HOST = '0.0.0.0';
 const JWT_SECRET = 'brk_devs_super_secret_key_2026';
 
 app.use(express.json());
@@ -85,7 +85,6 @@ app.get('/api/bot/server-sync', (req, res) => {
             names = defaultBotNames;
         }
 
-        // Yalnızca panelde aktif edilen (used_bots) kadar ismi dilimler
         const activeNames = names.slice(0, user.used_bots);
 
         res.json({
@@ -96,46 +95,51 @@ app.get('/api/bot/server-sync', (req, res) => {
     });
 });
 
+// KAYIT OL
 app.post('/api/register', (req, res) => {
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Tüm alanları doldurun!' });
-    const trimmedUsername = username.trim();
+    if (!username || !password) return res.status(400).json({ error: 'Tüm alanları doldurunuz!' });
 
-    db.get(`SELECT id FROM users WHERE LOWER(username) = LOWER(?)`, [trimmedUsername], (err, existingUser) => {
+    const cleanUser = username.trim();
+
+    db.get(`SELECT id FROM users WHERE LOWER(username) = LOWER(?)`, [cleanUser], (err, existingUser) => {
         if (err) return res.status(500).json({ error: 'Veritabanı hatası!' });
         if (existingUser) return res.status(400).json({ error: 'Bu kullanıcı adı zaten kullanılıyor!' });
 
         const hash = bcrypt.hashSync(password, 10);
-        const lowerUser = trimmedUsername.toLowerCase();
+        const lowerUser = cleanUser.toLowerCase();
         const initialRole = (lowerUser === 'berke' || lowerUser === 'admin') ? 'superadmin' : 'uye';
         const userApiKey = generateUniqueApiKey();
 
         db.run(`INSERT INTO users (username, password, role, api_key, bot_names) VALUES (?, ?, ?, ?, ?)`, 
-            [trimmedUsername, hash, initialRole, userApiKey, JSON.stringify(defaultBotNames)], function(err) {
-            if (err) return res.status(400).json({ error: 'Kayıt başarısız!' });
+            [cleanUser, hash, initialRole, userApiKey, JSON.stringify(defaultBotNames)], function(err) {
+            if (err) return res.status(500).json({ error: 'Kayıt başarısız!' });
             
-            const token = jwt.sign({ id: this.lastID, username: trimmedUsername, role: initialRole }, JWT_SECRET, { expiresIn: '7d' });
-            res.json({ success: true, token, message: 'Kayıt başarılı!' });
+            const token = jwt.sign({ id: this.lastID, username: cleanUser, role: initialRole }, JWT_SECRET, { expiresIn: '7d' });
+            res.json({ success: true, token, user: { id: this.lastID, username: cleanUser, role: initialRole }, message: 'Kayıt başarılı!' });
         });
     });
 });
 
+// GİRİŞ YAP
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: 'Kullanıcı adı ve şifre gerekli!' });
+    if (!username || !password) return res.status(400).json({ error: 'Kullanıcı adı ve şifre gereklidir!' });
 
-    db.get(`SELECT * FROM users WHERE LOWER(username) = LOWER(?)`, [username.trim()], (err, user) => {
+    const cleanUser = username.trim();
+
+    db.get(`SELECT * FROM users WHERE LOWER(username) = LOWER(?)`, [cleanUser], (err, user) => {
         if (err || !user || !bcrypt.compareSync(password, user.password)) {
             return res.status(400).json({ error: 'Kullanıcı adı veya şifre hatalı!' });
         }
 
         const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
-        res.json({ token, user: { username: user.username, role: user.role }, message: 'Giriş başarılı!' });
+        res.json({ success: true, token, user: { id: user.id, username: user.username, role: user.role }, message: 'Giriş başarılı!' });
     });
 });
 
 app.get('/api/me', authenticateToken, (req, res) => {
-    db.get(`SELECT id, username, role, server_ip, cfx_link, max_bots, used_bots, expiry_date, balance, api_key, bot_names FROM users WHERE id = ? OR LOWER(username) = LOWER(?)`, [req.user.id, req.user.username], (err, user) => {
+    db.get(`SELECT id, username, role, server_ip, cfx_link, max_bots, used_bots, expiry_date, balance, api_key, bot_names FROM users WHERE id = ?`, [req.user.id], (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
         res.json(user);
     });
@@ -145,9 +149,9 @@ app.post('/api/bot/start', authenticateToken, (req, res) => {
     const { count } = req.body;
     const botCount = parseInt(count);
 
-    if (isNaN(botCount) || botCount <= 0) return res.status(400).json({ error: 'Geçerli bir bot sayısı giriniz!' });
+    if (isNaN(botCount) || botCount <= 0) return res.status(400).json({ error: 'Geçerli bir sayı giriniz!' });
 
-    db.get(`SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)`, [req.user.id, req.user.username], (err, user) => {
+    db.get(`SELECT * FROM users WHERE id = ?`, [req.user.id], (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
         if (user.max_bots === 0) return res.status(400).json({ error: 'Aktif bot paketiniz bulunmuyor!' });
         if (botCount > user.max_bots) return res.status(400).json({ error: `En fazla ${user.max_bots} bot başlatabilirsiniz!` });
@@ -160,7 +164,7 @@ app.post('/api/bot/start', authenticateToken, (req, res) => {
 });
 
 app.post('/api/bot/stop', authenticateToken, (req, res) => {
-    db.run(`UPDATE users SET used_bots = 0 WHERE id = ? OR LOWER(username) = LOWER(?)`, [req.user.id, req.user.username], function(err) {
+    db.run(`UPDATE users SET used_bots = 0 WHERE id = ?`, [req.user.id], function(err) {
         if (err) return res.status(500).json({ error: 'Botlar durdurulamadı.' });
         res.json({ success: true, message: 'Tüm botlar durduruldu.' });
     });
@@ -171,5 +175,5 @@ app.get('*', (req, res) => {
 });
 
 app.listen(PORT, HOST, () => {
-    console.log(`[Brk Dev] Sunucu http://localhost:${PORT} ve yerel IP üzerinde aktif.`);
+    console.log(`[Brk Dev] Sunucu http://localhost:${PORT} üzerinde aktif.`);
 });

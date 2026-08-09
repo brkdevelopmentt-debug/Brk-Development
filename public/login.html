@@ -1,106 +1,74 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brk Dev - Giriş Yap</title>
-    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background: #0a0c14; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
-        
-        .auth-card { background: #121422; border: 1px solid #1e2238; width: 100%; max-width: 400px; padding: 35px; border-radius: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; }
-        .auth-brand { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 25px; }
-        .auth-brand img { width: 45px; height: 45px; border-radius: 8px; object-fit: cover; }
-        .auth-brand h2 { font-size: 22px; color: #5865f2; }
+document.addEventListener('DOMContentLoaded', () => {
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const alertBox = document.getElementById('alertBox');
 
-        .input-box { margin-bottom: 16px; text-align: left; }
-        .input-box label { display: block; font-size: 12px; color: #8e92a8; margin-bottom: 6px; font-weight: 600; }
-        .input-box input { width: 100%; padding: 12px; background: #0a0c14; border: 1px solid #1e2238; border-radius: 8px; color: #fff; outline: none; }
-        .input-box input:focus { border-color: #5865f2; }
+    function showAlert(msg, isError = true) {
+        if (!alertBox) return alert(msg);
+        alertBox.style.display = 'block';
+        alertBox.className = isError ? 'alert alert-danger' : 'alert alert-success';
+        alertBox.innerText = msg;
+    }
 
-        .btn { width: 100%; padding: 12px; background: #5865f2; border: none; border-radius: 8px; color: #fff; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 10px; }
-        .btn:hover { background: #4752c4; }
+    if (loginForm) {
+        loginForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
 
-        .toggle-btn { margin-top: 18px; font-size: 13px; color: #8e92a8; cursor: pointer; }
-        .toggle-btn span { color: #5865f2; font-weight: bold; }
+            try {
+                const res = await fetch('/api/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
 
-        #toast-container { position: fixed; top: 20px; right: 20px; z-index: 9999; }
-        .toast { background: #121422; border-left: 4px solid #e74c3c; color: #fff; padding: 14px 20px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.5); }
-    </style>
-</head>
-<body>
+                const data = await res.json();
 
-    <div id="toast-container"></div>
-
-    <div class="auth-card">
-        <div class="auth-brand">
-            <img src="/logo.png" alt="Brk Dev Logo" onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
-            <h2>Brk Dev</h2>
-        </div>
-
-        <h3 id="auth-title" style="margin-bottom: 20px; font-size: 18px;">Hesabınıza Giriş Yapın</h3>
-
-        <div class="input-box">
-            <label>Kullanıcı Adı</label>
-            <input type="text" id="username" placeholder="Kullanıcı adınızı girin">
-        </div>
-
-        <div class="input-box">
-            <label>Şifre</label>
-            <input type="password" id="password" placeholder="Şifrenizi girin">
-        </div>
-
-        <button class="btn" id="submit-btn" onclick="handleAuth()">Giriş Yap</button>
-
-        <div class="toggle-btn" onclick="toggleMode()">
-            <span id="toggle-text">Hesabınız yok mu? Kayıt Olun</span>
-        </div>
-    </div>
-
-    <script>
-        let isLogin = true;
-
-        function showToast(msg) {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
-            toast.className = 'toast';
-            toast.innerText = msg;
-            container.appendChild(toast);
-            setTimeout(() => toast.remove(), 3500);
-        }
-
-        function toggleMode() {
-            isLogin = !isLogin;
-            document.getElementById('auth-title').innerText = isLogin ? 'Hesabınıza Giriş Yapın' : 'Yeni Hesap Oluşturun';
-            document.getElementById('submit-btn').innerText = isLogin ? 'Giriş Yap' : 'Kayıt Ol';
-            document.getElementById('toggle-text').innerText = isLogin ? 'Hesabınız yok mu? Kayıt Olun' : 'Zaten hesabınız var mı? Giriş Yapın';
-        }
-
-        async function handleAuth() {
-            const username = document.getElementById('username').value.trim();
-            const password = document.getElementById('password').value;
-
-            if (!username || !password) {
-                return showToast('Lütfen tüm alanları doldurun!');
+                if (res.ok && data.token) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    showAlert('Giriş başarılı, yönlendiriliyorsunuz...', false);
+                    setTimeout(() => {
+                        window.location.href = '/dashboard.html';
+                    }, 800);
+                } else {
+                    showAlert(data.error || 'Giriş yapılamadı!');
+                }
+            } catch (err) {
+                showAlert('Sunucu hatası oluştu!');
             }
+        });
+    }
 
-            const endpoint = isLogin ? '/api/login' : '/api/register';
-            const res = await fetch(endpoint, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ username, password })
-            });
+    if (registerForm) {
+        registerForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('regUsername').value;
+            const password = document.getElementById('regPassword').value;
 
-            const data = await res.json();
+            try {
+                const res = await fetch('/api/register', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, password })
+                });
 
-            if (res.ok) {
-                localStorage.setItem('brk_token', data.token);
-                window.location.href = '/index.html';
-            } else {
-                showToast(data.error);
+                const data = await res.json();
+
+                if (res.ok && data.token) {
+                    localStorage.setItem('token', data.token);
+                    localStorage.setItem('user', JSON.stringify(data.user));
+                    showAlert('Kayıt başarılı, yönlendiriliyorsunuz...', false);
+                    setTimeout(() => {
+                        window.location.href = '/dashboard.html';
+                    }, 800);
+                } else {
+                    showAlert(data.error || 'Kayıt başarısız!');
+                }
+            } catch (err) {
+                showAlert('Sunucu hatası oluştu!');
             }
-        }
-    </script>
-</body>
-</html>
+        });
+    }
+});
