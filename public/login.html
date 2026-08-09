@@ -2,40 +2,97 @@
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
-    <title>Lux Dev - Panel Giriş</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brk Devs - Panel Giriş</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
     <style>
-        body { font-family: sans-serif; background: #0f0f15; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
-        .login-card { background: #181824; padding: 30px; border-radius: 10px; width: 320px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
-        input { width: 100%; padding: 10px; margin: 10px 0; background: #222232; border: 1px solid #333; color: #fff; border-radius: 5px; box-sizing: border-box; }
-        button { width: 100%; padding: 10px; background: #5865F2; border: none; color: #fff; font-weight: bold; border-radius: 5px; cursor: pointer; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Poppins', sans-serif; }
+        body { background: #08080c; color: #fff; min-height: 100vh; display: flex; justify-content: center; align-items: center; background-image: radial-gradient(circle at 50% 30%, #1a1e36 0%, #08080c 70%); }
+        .card { background: rgba(18, 18, 28, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(88, 101, 242, 0.2); width: 380px; padding: 35px 30px; border-radius: 16px; box-shadow: 0 0 35px rgba(88, 101, 242, 0.15); text-align: center; }
+        .logo-img { width: 140px; margin-bottom: 15px; filter: drop-shadow(0 0 10px rgba(0, 162, 255, 0.5)); }
+        .brand-title { font-family: 'Orbitron', sans-serif; font-size: 22px; font-weight: 900; letter-spacing: 2px; color: #fff; margin-bottom: 20px; text-shadow: 0 0 10px rgba(88, 101, 242, 0.8); }
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid #28283a; }
+        .tab-btn { flex: 1; padding: 10px; background: none; border: none; color: #888; font-weight: 600; cursor: pointer; transition: 0.3s; font-size: 14px; }
+        .tab-btn.active { color: #5865F2; border-bottom: 2px solid #5865F2; }
+        .form-group { margin-bottom: 15px; text-align: left; }
+        input { width: 100%; padding: 12px 15px; background: #12121a; border: 1px solid #28283a; border-radius: 8px; color: #fff; font-size: 14px; outline: none; transition: 0.3s; }
+        input:focus { border-color: #5865F2; box-shadow: 0 0 10px rgba(88, 101, 242, 0.3); }
+        button.btn-action { width: 100%; padding: 12px; background: linear-gradient(135deg, #5865F2, #00a2ff); border: none; color: #fff; font-weight: 700; border-radius: 8px; cursor: pointer; letter-spacing: 1px; margin-top: 10px; transition: 0.3s; box-shadow: 0 4px 15px rgba(88, 101, 242, 0.4); }
+        button.btn-action:hover { opacity: 0.9; transform: translateY(-1px); }
+        .hidden { display: none; }
     </style>
 </head>
 <body>
-    <div class="login-card">
-        <h2>Panel Girişi</h2>
-        <input type="text" id="username" placeholder="Kullanıcı Adı">
-        <input type="password" id="password" placeholder="Şifre">
-        <button onclick="login()">Giriş Yap</button>
+
+<div class="card">
+    <!-- Logo image: Kendiniz yüklediyseniz 'logo.png' yolunu kullanabilirsiniz -->
+    <img src="logo.png" alt="Brk Devs" class="logo-img" onerror="this.style.display='none'">
+    <div class="brand-title">BRK DEVS</div>
+
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('login')">Giriş Yap</button>
+        <button class="tab-btn" onclick="switchTab('register')">Kayıt Ol</button>
     </div>
 
-    <script>
-        async function login() {
-            let u = document.getElementById('username').value;
-            let p = document.getElementById('password').value;
-            let res = await fetch('/api/login', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({username: u, password: p})
-            });
-            let data = await res.json();
-            if(data.token) {
-                localStorage.setItem('token', data.token);
-                localStorage.setItem('role', data.role);
-                window.location.href = 'index.html';
-            } else {
-                alert(data.error);
-            }
+    <!-- GİRİŞ FORMU -->
+    <div id="login-form">
+        <div class="form-group"><input type="text" id="login-username" placeholder="Kullanıcı Adı"></div>
+        <div class="form-group"><input type="password" id="login-password" placeholder="Şifre"></div>
+        <button class="btn-action" onclick="login()">GİRİŞ YAP</button>
+    </div>
+
+    <!-- KAYIT FORMU -->
+    <div id="register-form" class="hidden">
+        <div class="form-group"><input type="text" id="reg-username" placeholder="Kullanıcı Adı Seçin"></div>
+        <div class="form-group"><input type="password" id="reg-password" placeholder="Şifre Oluşturun"></div>
+        <button class="btn-action" onclick="register()">KAYIT OL</button>
+    </div>
+</div>
+
+<script>
+    function switchTab(type) {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        if(type === 'login') {
+            document.querySelectorAll('.tab-btn')[0].classList.add('active');
+            document.getElementById('login-form').classList.remove('hidden');
+            document.getElementById('register-form').classList.add('hidden');
+        } else {
+            document.querySelectorAll('.tab-btn')[1].classList.add('active');
+            document.getElementById('register-form').classList.remove('hidden');
+            document.getElementById('login-form').classList.add('hidden');
         }
-    </script>
+    }
+
+    async function login() {
+        let u = document.getElementById('login-username').value;
+        let p = document.getElementById('login-password').value;
+        let res = await fetch('/api/login', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: u, password: p})
+        });
+        let data = await res.json();
+        if(data.token) {
+            localStorage.setItem('token', data.token);
+            localStorage.setItem('role', data.role);
+            window.location.href = 'index.html';
+        } else { alert(data.error); }
+    }
+
+    async function register() {
+        let u = document.getElementById('reg-username').value;
+        let p = document.getElementById('reg-password').value;
+        let res = await fetch('/api/register', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({username: u, password: p})
+        });
+        let data = await res.json();
+        if(data.success) {
+            alert('Kayıt başarılı! Şimdi giriş yapabilirsiniz.');
+            switchTab('login');
+        } else { alert(data.error); }
+    }
+</script>
 </body>
 </html>

@@ -100,6 +100,18 @@ app.post('/api/admin/generate-key', verifyToken, (req, res) => {
     });
 });
 
+// Kayıt Olma (Register) Endpoint
+app.post('/api/register', (req, res) => {
+    const { username, password } = req.body;
+    if (!username || !password) return res.status(400).json({ error: "Kullanıcı adı ve şifre gereklidir!" });
+
+    const hash = bcrypt.hashSync(password, 10);
+    db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, 'customer')`, [username, hash], function(err) {
+        if (err) return res.status(400).json({ error: "Bu kullanıcı adı zaten alınmış!" });
+        res.json({ success: true, message: "Kayıt başarılı." });
+    });
+});
+
 // Müşteri: Bot Ayarlarını Güncelle (Slider & İsimler)
 app.post('/api/customer/update', verifyToken, (req, res) => {
     const { active_bots, custom_names } = req.body;
