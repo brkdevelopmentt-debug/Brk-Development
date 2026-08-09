@@ -28,7 +28,7 @@
         .toggle-link { text-align: center; margin-top: 20px; font-size: 14px; color: #a0a5b5; cursor: pointer; }
         .toggle-link span { color: #5865f2; font-weight: bold; }
 
-        /* Google Tarzı Sağ-Orta Bildirim Toast */
+        /* Google Tarzı Sağ-Orta Toast UI */
         #toast-container { position: fixed; top: 50%; right: 20px; transform: translateY(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { pointer-events: auto; background: #1f2333; border-left: 4px solid #5865f2; color: #fff; padding: 16px 20px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,0.4); display: flex; align-items: center; gap: 12px; min-width: 280px; max-width: 360px; animation: slideIn 0.4s ease forwards; opacity: 0; transform: translateX(100%); }
         .toast.success { border-left-color: #2ecc71; }
@@ -37,18 +37,15 @@
         .toast.success i { color: #2ecc71; }
         .toast.error i { color: #e74c3c; }
 
-        @keyframes slideIn {
-            to { opacity: 1; transform: translateX(0); }
-        }
-        @keyframes slideOut {
-            to { opacity: 0; transform: translateX(100%); }
-        }
+        @keyframes slideIn { to { opacity: 1; transform: translateX(0); } }
+        @keyframes slideOut { to { opacity: 0; transform: translateX(100%); } }
     </style>
 </head>
 <body>
 
     <div id="toast-container"></div>
 
+    <!-- GİRİŞ FORMU -->
     <div class="auth-card" id="login-box">
         <h2>Brk Dev</h2>
         <div class="input-group">
@@ -63,6 +60,7 @@
         <div class="toggle-link" onclick="toggleAuth(true)">Hesabın yok mu? <span>Kayıt Ol</span></div>
     </div>
 
+    <!-- KAYIT FORMU -->
     <div class="auth-card" id="register-box" style="display: none;">
         <h2>Brk Dev - Kayıt</h2>
         <div class="input-group">
@@ -82,36 +80,30 @@
     </div>
 
     <script>
-        // Bildirim Sesi (Google Pop Sesi Web Audio API Sentezi)
         function playNotificationSound() {
             try {
                 const ctx = new (window.AudioContext || window.webkitAudioContext)();
                 const osc = ctx.createOscillator();
                 const gain = ctx.createGain();
                 osc.type = 'sine';
-                osc.frequency.setValueAtTime(587.33, ctx.currentTime); // D5
-                osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15); // A5
+                osc.frequency.setValueAtTime(587.33, ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
                 gain.gain.setValueAtTime(0.2, ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
                 osc.connect(gain);
                 gain.connect(ctx.destination);
                 osc.start();
                 osc.stop(ctx.currentTime + 0.15);
-            } catch (e) {
-                console.log("Ses çalınamadı.");
-            }
+            } catch (e) {}
         }
 
-        // Google UI Sağ-Orta Toast
         function showToast(message, type = 'success') {
             playNotificationSound();
             const container = document.getElementById('toast-container');
             const toast = document.createElement('div');
             toast.className = `toast ${type}`;
-            
             const iconClass = type === 'success' ? 'fa-circle-check' : 'fa-circle-exclamation';
             toast.innerHTML = `<i class="fa-solid ${iconClass}"></i> <div>${message}</div>`;
-            
             container.appendChild(toast);
 
             setTimeout(() => {
@@ -149,20 +141,16 @@
 
             if (score <= 25) {
                 bar.style.backgroundColor = '#e74c3c';
-                text.innerText = 'Çok Zayıf';
-                text.style.color = '#e74c3c';
+                text.innerText = 'Çok Zayıf'; text.style.color = '#e74c3c';
             } else if (score <= 50) {
                 bar.style.backgroundColor = '#e67e22';
-                text.innerText = 'Zayıf';
-                text.style.color = '#e67e22';
+                text.innerText = 'Zayıf'; text.style.color = '#e67e22';
             } else if (score <= 75) {
                 bar.style.backgroundColor = '#f1c40f';
-                text.innerText = 'Orta Güçlü';
-                text.style.color = '#f1c40f';
+                text.innerText = 'Orta Güçlü'; text.style.color = '#f1c40f';
             } else {
                 bar.style.backgroundColor = '#2ecc71';
-                text.innerText = 'Çok Güçlü';
-                text.style.color = '#2ecc71';
+                text.innerText = 'Çok Güçlü'; text.style.color = '#2ecc71';
             }
         }
 
@@ -183,8 +171,9 @@
 
             const data = await res.json();
             if (res.ok) {
-                showToast(data.message, 'success');
-                setTimeout(() => toggleAuth(false), 1500);
+                localStorage.setItem('token', data.token);
+                showToast('Kayıt başarılı! Yönlendiriliyorsunuz...', 'success');
+                setTimeout(() => window.location.href = '/index.html', 1000);
             } else {
                 showToast(data.error, 'error');
             }
