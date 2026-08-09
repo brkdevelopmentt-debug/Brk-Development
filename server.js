@@ -31,6 +31,12 @@ db.serialize(() => {
         used_bots INTEGER DEFAULT 0,
         expiry_date TEXT DEFAULT ''
     )`);
+    db.serialize(() => {
+    // ... tablo oluşturma kodları ...
+
+    // 'KENDI_KULLANICI_ADINIZ' yazan yeri kendi kullanıcı adınızla değiştirin:
+    db.run(`UPDATE users SET role = 'superadmin' WHERE username = 'Berke'`);
+});
 
     const defaultPass = bcrypt.hashSync('admin123', 10);
     db.run(`INSERT OR IGNORE INTO users (id, username, password, role) VALUES (1, 'admin', ?, 'superadmin')`, [defaultPass]);
