@@ -20,7 +20,12 @@ const db = new sqlite3.Database('./database.sqlite', (err) => {
     else console.log('SQLite Veritabanı Hazır.');
 });
 
-// Tablo Oluşturma
+// Otomatik API Key Üretme Fonksiyonu
+function generateUniqueApiKey() {
+    return 'brk_live_' + crypto.randomBytes(16).toString('hex');
+}
+
+// Tablo Oluşturma ve Hazırlık
 db.serialize(() => {
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,10 +41,29 @@ db.serialize(() => {
         api_key TEXT DEFAULT ''
     )`);
 
-    // Varsayılan Admin Hesapları
+    // Varsayılan Admin Hesapları ve Mevcut API Key'si Olmayanlara Otomatik Key Tanımlama
     const defaultPass = bcrypt.hashSync('admin123', 10);
-    db.run(`INSERT OR IGNORE INTO users (username, password, role) VALUES ('admin', ?, 'superadmin')`, [defaultPass]);
-    db.run(`UPDATE users SET role = 'superadmin' WHERE LOWER(username) IN ('berke', 'admin')`);
+    const adminKey = generateUniqueApiKey();
+    
+    db.run(`INSERT OR IGNORE INTO users (username, password, role, api_key) VALUES ('admin', ?, 'superadmin', ?)`, [defaultPass, adminKey]);
+    
+    // Admin ve Berke kullanıcılarının rollerini koru ve API Key yoksa oluştur
+    db.all(`SELECT id, api_key, username FROM users`, [], (err, rows) => {
+        if (!err && rows) {
+            rows.forEach(user => {
+                const lowerName = user.username.toLowerCase();
+                let isSuper = (lowerName === 'berke' || lowerName === 'admin');
+                
+                if (!user.api_key) {
+                    const newKey = generateUniqueApiKey();
+                    db.run(`UPDATE users SET api_key = ? WHERE id = ?`, [newKey, user.id]);
+                }
+                if (isSuper) {
+                    db.run(`UPDATE users SET role = 'superadmin' WHERE id = ?`, [user.id]);
+                }
+            });
+        }
+    });
 });
 
 // JWT Middleware
@@ -77,12 +101,6 @@ app.post('/api/register', (req, res) => {
     if (password.length < 6 || password.length > 24) {
         return res.status(400).json({ error: 'Şifre 6 ile 24 karakter arasında olmalıdır!' });
     }
-    if (!/\d/.test(password)) {
-        return res.status(400).json({ error: 'Şifre en az bir adet rakam içermelidir!' });
-    }
-    if (!/[a-zA-Z]/.test(password)) {
-        return res.status(400).json({ error: 'Şifre en az bir adet harf içermelidir!' });
-    }
 
     db.get(`SELECT id FROM users WHERE LOWER(username) = LOWER(?)`, [trimmedUsername], (err, existingUser) => {
         if (err) return res.status(500).json({ error: 'Veritabanı hatası!' });
@@ -93,8 +111,10 @@ app.post('/api/register', (req, res) => {
         const hash = bcrypt.hashSync(password, 10);
         const lowerUser = trimmedUsername.toLowerCase();
         const initialRole = (lowerUser === 'berke' || lowerUser === 'admin') ? 'superadmin' : 'uye';
+        const userApiKey = generateUniqueApiKey();
 
-        db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, ?)`, [trimmedUsername, hash, initialRole], function(err) {
+        db.run(`INSERT INTO users (username, password, role, api_key) VALUES (?, ?, ?, ?)`, 
+            [trimmedUsername, hash, initialRole, userApiKey], function(err) {
             if (err) return res.status(400).json({ error: 'Kullanıcı kaydı oluşturulamadı!' });
             
             const token = jwt.sign({ id: this.lastID, username: trimmedUsername, role: initialRole }, JWT_SECRET, { expiresIn: '7d' });
@@ -112,6 +132,14 @@ app.post('/api/login', (req, res) => {
         if (err || !user || !bcrypt.compareSync(password, user.password)) {
             return res.status(400).json({ error: 'Kullanıcı adı veya şifre hatalı!' });
         }
+        
+        // Eğer kullanıcı eski kayıtsa ve API Key'i yoksa giriş yaparken otomatik üret
+        if (!user.api_key) {
+            const newKey = generateUniqueApiKey();
+            db.run(`UPDATE users SET api_key = ? WHERE id = ?`, [newKey, user.id]);
+            user.api_key = newKey;
+        }
+
         const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
         res.json({ token, user: { username: user.username, role: user.role }, message: 'Giriş başarılı!' });
     });
@@ -121,6 +149,14 @@ app.post('/api/login', (req, res) => {
 app.get('/api/me', authenticateToken, (req, res) => {
     db.get(`SELECT id, username, role, server_ip, cfx_link, max_bots, used_bots, expiry_date, balance, api_key FROM users WHERE id = ?`, [req.user.id], (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
+        
+        // API Key kontrolü
+        if (!user.api_key) {
+            const newKey = generateUniqueApiKey();
+            db.run(`UPDATE users SET api_key = ? WHERE id = ?`, [newKey, user.id]);
+            user.api_key = newKey;
+        }
+
         res.json(user);
     });
 });
@@ -129,7 +165,6 @@ app.get('/api/me', authenticateToken, (req, res) => {
 app.post('/api/user/update-server', authenticateToken, (req, res) => {
     const { server_ip, cfx_link } = req.body;
     
-    // CFX Link düzeltme kontrolü
     let cleanCfx = cfx_link ? cfx_link.trim().replace('https://', '').replace('http://', '') : '';
     if (cleanCfx && !cleanCfx.includes('cfx.re/join/')) {
         if (cleanCfx.startsWith('cfx.rejoin')) {
@@ -163,10 +198,6 @@ app.post('/api/bot/start', authenticateToken, (req, res) => {
             return res.status(400).json({ error: `En fazla ${user.max_bots} adet bot başlatabilirsiniz!` });
         }
 
-        if (!user.api_key) {
-            return res.status(400).json({ error: 'Hesabınıza atanmış bir API Key bulunmuyor! Lütfen Admin ile iletişime geçin.' });
-        }
-
         if (!user.server_ip && !user.cfx_link) {
             return res.status(400).json({ error: 'Lütfen önce Sunucu IP veya CFX bağlantınızı kaydedin!' });
         }
@@ -174,7 +205,7 @@ app.post('/api/bot/start', authenticateToken, (req, res) => {
         db.run(`UPDATE users SET used_bots = ? WHERE id = ?`, [botCount, req.user.id], function(err) {
             if (err) return res.status(500).json({ error: 'Bot durumu güncellenemedi.' });
 
-            console.log(`[BRK-BOT] ${user.username} - API Key: ${user.api_key} -> ${botCount} Bot Gönderiliyor... Target: ${user.cfx_link || user.server_ip}`);
+            console.log(`[BRK-BOT] ${user.username} - Key: ${user.api_key} -> ${botCount} Bot Gönderiliyor... Target: ${user.cfx_link || user.server_ip}`);
 
             res.json({ success: true, message: `${botCount} adet bot sunucuya yönlendiriliyor...` });
         });
@@ -192,7 +223,7 @@ app.post('/api/bot/stop', authenticateToken, (req, res) => {
 // PAKET SATIN AL
 app.post('/api/user/buy-package', authenticateToken, (req, res) => {
     const { bots, days, totalPrice } = req.body;
-    db.get(`SELECT balance FROM users WHERE id = ?`, [req.user.id], (err, user) => {
+    db.get(`SELECT * FROM users WHERE id = ?`, [req.user.id], (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
         if (user.balance < totalPrice) {
             return res.status(400).json({ error: 'Yetersiz bakiye! Lütfen EUR bakiyesi yükleyin.' });
@@ -203,15 +234,18 @@ app.post('/api/user/buy-package', authenticateToken, (req, res) => {
         expiryDate.setDate(expiryDate.getDate() + parseInt(days));
         const formattedDate = expiryDate.toISOString().split('T')[0];
 
-        db.run(`UPDATE users SET balance = ?, max_bots = ?, expiry_date = ?, role = 'musteri' WHERE id = ?`, 
-            [newBalance, bots, formattedDate, req.user.id], function(err) {
+        // Eğer kullanıcı 'uye' ise 'musteri' yap. Admin veya Superadmin ise rolüne dokunma!
+        const newRole = (user.role === 'uye') ? 'musteri' : user.role;
+
+        db.run(`UPDATE users SET balance = ?, max_bots = ?, expiry_date = ?, role = ? WHERE id = ?`, 
+            [newBalance, bots, formattedDate, newRole, req.user.id], function(err) {
                 if (err) return res.status(500).json({ error: 'Satın alım işlemi başarısız.' });
                 res.json({ success: true, message: 'Paket başarıyla satın alındı ve hesabınıza tanımlandı!' });
         });
     });
 });
 
-// ADMIN: API KEY OLUŞTUR / ATAMA
+// ADMIN: API KEY YENİLE / OLUŞTUR
 app.post('/api/admin/generate-apikey', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
         return res.status(403).json({ error: 'Yetkisiz erişim!' });
@@ -220,12 +254,11 @@ app.post('/api/admin/generate-apikey', authenticateToken, (req, res) => {
     const { targetUsername } = req.body;
     if (!targetUsername) return res.status(400).json({ error: 'Kullanıcı adı giriniz!' });
 
-    // 32 Karakterlik Rastgele API Key Üretme (örn: brk_live_a1b2c3d4e5f6...)
-    const newApiKey = 'brk_live_' + crypto.randomBytes(16).toString('hex');
+    const newApiKey = generateUniqueApiKey();
 
     db.run(`UPDATE users SET api_key = ? WHERE LOWER(username) = LOWER(?)`, [newApiKey, targetUsername.trim()], function(err) {
         if (err || this.changes === 0) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
-        res.json({ success: true, apiKey: newApiKey, message: `${targetUsername} kullanıcısına yeni API Key atandı.` });
+        res.json({ success: true, apiKey: newApiKey, message: `${targetUsername} için yeni API Key atandı.` });
     });
 });
 
@@ -233,19 +266,33 @@ app.post('/api/admin/generate-apikey', authenticateToken, (req, res) => {
 app.post('/api/admin/set-role', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ error: 'Yetkisiz erişim!' });
     const { targetUsername, newRole } = req.body;
+    
     db.run(`UPDATE users SET role = ? WHERE LOWER(username) = LOWER(?)`, [newRole, targetUsername.trim()], function(err) {
         if (err || this.changes === 0) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
         res.json({ success: true, message: `${targetUsername} kullanıcısının rolü ${newRole} olarak güncellendi.` });
     });
 });
 
-// ADMIN: BOT VE SÜRE TANIMLA
+// ADMIN: MANUEL BOT VE SÜRE TANIMLAMA (Sadece Hedef Kullanıcıya Etki Eder)
 app.post('/api/admin/grant-bots', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ error: 'Yetkisiz erişim!' });
+    
     const { targetUsername, max_bots, expiry_date } = req.body;
-    db.run(`UPDATE users SET max_bots = ?, expiry_date = ?, role = 'musteri' WHERE LOWER(username) = LOWER(?)`, [max_bots, expiry_date, targetUsername.trim()], function(err) {
-        if (err || this.changes === 0) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
-        res.json({ success: true, message: 'Bot ve süre kullanıcıya atandı.' });
+    if (!targetUsername || !max_bots || !expiry_date) {
+        return res.status(400).json({ error: 'Tüm alanları doldurunuz!' });
+    }
+
+    db.get(`SELECT id, role FROM users WHERE LOWER(username) = LOWER(?)`, [targetUsername.trim()], (err, targetUser) => {
+        if (err || !targetUser) return res.status(404).json({ error: 'Hedef kullanıcı bulunamadı!' });
+
+        // Hedef kullanıcı 'uye' ise 'musteri' yap. Admin/Superadmin ise rolünü bozma!
+        const targetNewRole = (targetUser.role === 'uye') ? 'musteri' : targetUser.role;
+
+        db.run(`UPDATE users SET max_bots = ?, expiry_date = ?, role = ? WHERE id = ?`, 
+            [max_bots, expiry_date, targetNewRole, targetUser.id], function(err) {
+                if (err) return res.status(500).json({ error: 'Paket tanımlama işlemi başarısız.' });
+                res.json({ success: true, message: `${targetUsername} kullanıcısına ${max_bots} bot tanımlandı.` });
+        });
     });
 });
 
@@ -253,6 +300,7 @@ app.post('/api/admin/grant-bots', authenticateToken, (req, res) => {
 app.post('/api/admin/add-balance', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ error: 'Yetkisiz erişim!' });
     const { targetUsername, amount } = req.body;
+    
     db.run(`UPDATE users SET balance = balance + ? WHERE LOWER(username) = LOWER(?)`, [amount, targetUsername.trim()], function(err) {
         if (err || this.changes === 0) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
         res.json({ success: true, message: `${targetUsername} hesabına ${amount} EUR eklendi.` });
