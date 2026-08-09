@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Lux Dev - Fake Player Yönetimi</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background: #12121c; color: #fff; margin: 0; padding: 30px; }
+        .container { max-width: 600px; margin: 0 auto; }
+        .card { background: #1e1e2e; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        h3 { margin-top: 0; color: #5865F2; }
+        input, select, textarea { width: 100%; padding: 10px; margin: 8px 0; background: #12121c; border: 1px solid #333; color: #fff; border-radius: 5px; box-sizing: border-box; }
+        button { background: #43b581; border: none; color: #fff; padding: 10px 15px; font-weight: bold; border-radius: 5px; cursor: pointer; width: 100%; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- ADMIN PANEL -->
+    <div id="admin-section" class="card hidden">
+        <h3>Admin: API Key Oluştur</h3>
+        <input type="text" id="target_user" placeholder="Müşteri Kullanıcı Adı">
+        <input type="number" id="bot_limit" placeholder="Bot Limiti (Örn: 30)">
+        <select id="duration">
+            <option value="1">1 Aylık</option>
+            <option value="3">3 Aylık</option>
+            <option value="12">1 Yıllık</option>
+        </select>
+        <button onclick="generateKey()">KEY ÜRET</button>
+        <p id="key-result" style="word-break: break-all; color: #5865F2;"></p>
+    </div>
+
+    <!-- MÜŞTERİ PANEL -->
+    <div id="customer-section" class="card hidden">
+        <h3>Bot Yönetimi</h3>
+        <p><strong>API Key:</strong> <span id="api-key-display">---</span></p>
+        <p><strong>Bitiş Tarihi:</strong> <span id="expires-display">---</span></p>
+        <hr border="1" color="#333">
+        <label>Aktif Bot Sayısı: <strong id="bot-val">0</strong> / <span id="max-bot">0</span></label>
+        <input type="range" id="botRange" min="0" value="0" oninput="document.getElementById('bot-val').innerText = this.value">
+        
+        <label>Özel İsimler (Virgül ile ayırın):</label>
+        <textarea id="customNames" rows="4" placeholder="Eren_K, Burak_TR, Alex_R..."></textarea>
+        
+        <button onclick="saveSettings()">AYARLARI KAYDET</button>
+    </div>
+</div>
+
+<script>
+    const token = localStorage.getItem('token');
+    const role = localStorage.getItem('role');
+
+    if(!token) window.location.href = 'login.html';
+
+    if(role === 'superadmin' || role === 'admin') {
+        document.getElementById('admin-section').classList.remove('hidden');
+    }
+
+    async function loadCustomerInfo() {
+        let res = await fetch('/api/customer/info', {
+            headers: { 'Authorization': 'Bearer ' + token }
+        });
+        let data = await res.json();
+        
+        if(data.has_license) {
+            document.getElementById('customer-section').classList.remove('hidden');
+            document.getElementById('api-key-display').innerText = data.api_key;
+            document.getElementById('expires-display').innerText = data.expires_at;
+            document.getElementById('max-bot').innerText = data.bot_limit;
+            document.getElementById('botRange').max = data.bot_limit;
+            document.getElementById('botRange').value = data.active_bots;
+            document.getElementById('bot-val').innerText = data.active_bots;
+            document.getElementById('customNames').value = data.custom_names || '';
+        }
+    }
+
+    async function generateKey() {
+        let target_username = document.getElementById('target_user').value;
+        let bot_limit = parseInt(document.getElementById('bot_limit').value);
+        let duration_months = parseInt(document.getElementById('duration').value);
+
+        let res = await fetch('/api/admin/generate-key', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ target_username, bot_limit, duration_months })
+        });
+        let data = await res.json();
+        if(data.success) {
+            document.getElementById('key-result').innerText = `Üretilen Key: ${data.api_key} (Bitiş: ${data.expires_at})`;
+        } else {
+            alert(data.error);
+        }
+    }
+
+    async function saveSettings() {
+        let active_bots = parseInt(document.getElementById('botRange').value);
+        let custom_names = document.getElementById('customNames').value;
+
+        let res = await fetch('/api/customer/update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ active_bots, custom_names })
+        });
+        let data = await res.json();
+        alert(data.message || data.error);
+    }
+
+    loadCustomerInfo();
+</script>
+</body>
+</html>

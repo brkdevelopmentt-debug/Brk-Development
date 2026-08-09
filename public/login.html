@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <title>Lux Dev - Panel Giriş</title>
+    <style>
+        body { font-family: sans-serif; background: #0f0f15; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; }
+        .login-card { background: #181824; padding: 30px; border-radius: 10px; width: 320px; box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+        input { width: 100%; padding: 10px; margin: 10px 0; background: #222232; border: 1px solid #333; color: #fff; border-radius: 5px; box-sizing: border-box; }
+        button { width: 100%; padding: 10px; background: #5865F2; border: none; color: #fff; font-weight: bold; border-radius: 5px; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <h2>Panel Girişi</h2>
+        <input type="text" id="username" placeholder="Kullanıcı Adı">
+        <input type="password" id="password" placeholder="Şifre">
+        <button onclick="login()">Giriş Yap</button>
+    </div>
+
+    <script>
+        async function login() {
+            let u = document.getElementById('username').value;
+            let p = document.getElementById('password').value;
+            let res = await fetch('/api/login', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({username: u, password: p})
+            });
+            let data = await res.json();
+            if(data.token) {
+                localStorage.setItem('token', data.token);
+                localStorage.setItem('role', data.role);
+                window.location.href = 'index.html';
+            } else {
+                alert(data.error);
+            }
+        }
+    </script>
+</body>
+</html>
