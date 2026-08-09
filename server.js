@@ -4,6 +4,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const path = require('path');
 const cors = require('cors');
+const crypto = require('crypto');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -31,7 +32,8 @@ db.serialize(() => {
         max_bots INTEGER DEFAULT 0,
         used_bots INTEGER DEFAULT 0,
         expiry_date TEXT DEFAULT '',
-        balance REAL DEFAULT 0.0
+        balance REAL DEFAULT 0.0,
+        api_key TEXT DEFAULT ''
     )`);
 
     // Varsayılan Admin Hesapları
@@ -72,7 +74,6 @@ app.post('/api/register', (req, res) => {
         return res.status(400).json({ error: 'Kullanıcı adı 3-20 karakter arasında olmalıdır!' });
     }
 
-    // Şifre Güvenlik Kontrolleri
     if (password.length < 6 || password.length > 24) {
         return res.status(400).json({ error: 'Şifre 6 ile 24 karakter arasında olmalıdır!' });
     }
@@ -83,7 +84,6 @@ app.post('/api/register', (req, res) => {
         return res.status(400).json({ error: 'Şifre en az bir adet harf içermelidir!' });
     }
 
-    // Aynı Kullanıcı Adı Kontrolü (Case-Insensitive)
     db.get(`SELECT id FROM users WHERE LOWER(username) = LOWER(?)`, [trimmedUsername], (err, existingUser) => {
         if (err) return res.status(500).json({ error: 'Veritabanı hatası!' });
         if (existingUser) {
@@ -119,7 +119,7 @@ app.post('/api/login', (req, res) => {
 
 // KULLANICI BİLGİLERİNİ GETİR
 app.get('/api/me', authenticateToken, (req, res) => {
-    db.get(`SELECT id, username, role, server_ip, cfx_link, max_bots, used_bots, expiry_date, balance FROM users WHERE id = ?`, [req.user.id], (err, user) => {
+    db.get(`SELECT id, username, role, server_ip, cfx_link, max_bots, used_bots, expiry_date, balance, api_key FROM users WHERE id = ?`, [req.user.id], (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
         res.json(user);
     });
@@ -128,7 +128,16 @@ app.get('/api/me', authenticateToken, (req, res) => {
 // SUNUCU AYARLARINI KAYDET
 app.post('/api/user/update-server', authenticateToken, (req, res) => {
     const { server_ip, cfx_link } = req.body;
-    db.run(`UPDATE users SET server_ip = ?, cfx_link = ? WHERE id = ?`, [server_ip || '', cfx_link || '', req.user.id], function(err) {
+    
+    // CFX Link düzeltme kontrolü
+    let cleanCfx = cfx_link ? cfx_link.trim().replace('https://', '').replace('http://', '') : '';
+    if (cleanCfx && !cleanCfx.includes('cfx.re/join/')) {
+        if (cleanCfx.startsWith('cfx.rejoin')) {
+            cleanCfx = cleanCfx.replace('cfx.rejoin', 'cfx.re/join/');
+        }
+    }
+
+    db.run(`UPDATE users SET server_ip = ?, cfx_link = ? WHERE id = ?`, [server_ip || '', cleanCfx || '', req.user.id], function(err) {
         if (err) return res.status(500).json({ error: 'Veritabanına kaydedilemedi!' });
         res.json({ success: true, message: 'Sunucu bilgileri başarıyla kaydedildi.' });
     });
@@ -143,7 +152,7 @@ app.post('/api/bot/start', authenticateToken, (req, res) => {
         return res.status(400).json({ error: 'Geçerli bir bot sayısı giriniz!' });
     }
 
-    db.get(`SELECT max_bots FROM users WHERE id = ?`, [req.user.id], (err, user) => {
+    db.get(`SELECT * FROM users WHERE id = ?`, [req.user.id], (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
         
         if (user.max_bots === 0) {
@@ -154,8 +163,19 @@ app.post('/api/bot/start', authenticateToken, (req, res) => {
             return res.status(400).json({ error: `En fazla ${user.max_bots} adet bot başlatabilirsiniz!` });
         }
 
+        if (!user.api_key) {
+            return res.status(400).json({ error: 'Hesabınıza atanmış bir API Key bulunmuyor! Lütfen Admin ile iletişime geçin.' });
+        }
+
+        if (!user.server_ip && !user.cfx_link) {
+            return res.status(400).json({ error: 'Lütfen önce Sunucu IP veya CFX bağlantınızı kaydedin!' });
+        }
+
         db.run(`UPDATE users SET used_bots = ? WHERE id = ?`, [botCount, req.user.id], function(err) {
             if (err) return res.status(500).json({ error: 'Bot durumu güncellenemedi.' });
+
+            console.log(`[BRK-BOT] ${user.username} - API Key: ${user.api_key} -> ${botCount} Bot Gönderiliyor... Target: ${user.cfx_link || user.server_ip}`);
+
             res.json({ success: true, message: `${botCount} adet bot sunucuya yönlendiriliyor...` });
         });
     });
@@ -188,6 +208,24 @@ app.post('/api/user/buy-package', authenticateToken, (req, res) => {
                 if (err) return res.status(500).json({ error: 'Satın alım işlemi başarısız.' });
                 res.json({ success: true, message: 'Paket başarıyla satın alındı ve hesabınıza tanımlandı!' });
         });
+    });
+});
+
+// ADMIN: API KEY OLUŞTUR / ATAMA
+app.post('/api/admin/generate-apikey', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+        return res.status(403).json({ error: 'Yetkisiz erişim!' });
+    }
+
+    const { targetUsername } = req.body;
+    if (!targetUsername) return res.status(400).json({ error: 'Kullanıcı adı giriniz!' });
+
+    // 32 Karakterlik Rastgele API Key Üretme (örn: brk_live_a1b2c3d4e5f6...)
+    const newApiKey = 'brk_live_' + crypto.randomBytes(16).toString('hex');
+
+    db.run(`UPDATE users SET api_key = ? WHERE LOWER(username) = LOWER(?)`, [newApiKey, targetUsername.trim()], function(err) {
+        if (err || this.changes === 0) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
+        res.json({ success: true, apiKey: newApiKey, message: `${targetUsername} kullanıcısına yeni API Key atandı.` });
     });
 });
 

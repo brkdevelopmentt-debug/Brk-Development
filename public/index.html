@@ -43,6 +43,8 @@
         .input-box label { display: block; font-size: 12px; color: #8e92a8; margin-bottom: 6px; font-weight: 600; }
         .input-box input, .input-box select { width: 100%; padding: 11px; background: #0a0c14; border: 1px solid #1e2238; border-radius: 8px; color: #fff; outline: none; }
 
+        .code-box { background: #0a0c14; border: 1px dashed #5865f2; border-radius: 8px; padding: 10px; font-family: monospace; font-size: 12px; color: #2ecc71; margin-top: 8px; word-break: break-all; }
+
         .btn { width: 100%; padding: 12px; background: #5865f2; border: none; border-radius: 8px; color: #fff; font-weight: bold; cursor: pointer; transition: 0.3s; margin-top: 8px; }
         .btn:hover { background: #4752c4; }
         .btn-success { background: #2ecc71; }
@@ -117,18 +119,23 @@
                 </div>
             </div>
 
-            <!-- SUNUCU AYARLARI -->
+            <!-- SUNUCU VE SERVER.CFG API KEY AYARLARI -->
             <div class="card customer-only" style="display: none;">
-                <h3><i class="fa-solid fa-server" style="color: #5865f2;"></i> Sunucu Ayarları</h3>
+                <h3><i class="fa-solid fa-server" style="color: #5865f2;"></i> Sunucu & CFG Bilgileri</h3>
                 <div class="input-box">
                     <label>Sunucu IP Adresi</label>
-                    <input type="text" id="srv-ip" placeholder="185.123.45.67:30120">
+                    <input type="text" id="srv-ip" placeholder="217.131.100.22">
                 </div>
                 <div class="input-box">
                     <label>CFX.re Bağlantısı</label>
-                    <input type="text" id="srv-cfx" placeholder="cfx.re/join/XXXXXX">
+                    <input type="text" id="srv-cfx" placeholder="cfx.re/join/3evmjy">
                 </div>
                 <button class="btn" onclick="saveServerInfo()">Ayarları Kaydet</button>
+
+                <div style="margin-top: 15px; border-top: 1px solid #1e2238; padding-top: 10px;">
+                    <label style="font-size: 12px; color: #8e92a8; font-weight: 600;">server.cfg Dosyasına Eklenecek Kod:</label>
+                    <div class="code-box" id="cfg-code-display">set brkapikey "Atanmadı"</div>
+                </div>
             </div>
 
             <!-- EUR İLE PAKET SATIN ALMA -->
@@ -155,7 +162,17 @@
         <!-- ADMIN VE SUPERADMIN PANELİ -->
         <div class="card" id="admin-section" style="margin-top: 30px; display: none;">
             <h3><i class="fa-solid fa-shield-halved" style="color: #e74c3c;"></i> Yönetici İşlemleri</h3>
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 15px;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-top: 15px;">
+                
+                <!-- API KEY OLUŞTURMA ALANI -->
+                <div>
+                    <h4 style="margin-bottom: 10px; font-size: 14px; color: #8e92a8;">API Key Oluştur</h4>
+                    <div class="input-box">
+                        <input type="text" id="key-target-user" placeholder="Kullanıcı Adı">
+                    </div>
+                    <button class="btn" style="background: #9b59b6;" onclick="generateApiKey()">API Key Üret</button>
+                </div>
+
                 <div>
                     <h4 style="margin-bottom: 10px; font-size: 14px; color: #8e92a8;">Kullanıcı Rolü Değiştir</h4>
                     <div class="input-box">
@@ -171,6 +188,7 @@
                     </div>
                     <button class="btn" onclick="setRole()">Rol Güncelle</button>
                 </div>
+
                 <div>
                     <h4 style="margin-bottom: 10px; font-size: 14px; color: #8e92a8;">Manuel Bot & Süre Tanımla</h4>
                     <div class="input-box">
@@ -184,6 +202,7 @@
                     </div>
                     <button class="btn" onclick="grantBots()">Paket Tanımla</button>
                 </div>
+
                 <div>
                     <h4 style="margin-bottom: 10px; font-size: 14px; color: #8e92a8;">Bakiye Yükle (EUR)</h4>
                     <div class="input-box">
@@ -244,6 +263,12 @@
                 document.getElementById('srv-cfx').value = currentUser.cfx_link || '';
                 document.getElementById('expiry-text').innerText = currentUser.expiry_date || 'Tanımsız';
 
+                if (currentUser.api_key) {
+                    document.getElementById('cfg-code-display').innerText = `set brkapikey "${currentUser.api_key}"`;
+                } else {
+                    document.getElementById('cfg-code-display').innerText = 'API Key henüz atanamadı (Admin ile iletişime geçin)';
+                }
+
                 let max = currentUser.max_bots || 0;
                 let used = currentUser.used_bots || 0;
                 let perc = max > 0 ? (used / max) * 100 : 0;
@@ -274,8 +299,31 @@
             });
 
             const data = await res.json();
-            if (res.ok) showToast(data.message, 'success');
-            else showToast(data.error, 'error');
+            if (res.ok) {
+                showToast(data.message, 'success');
+                init();
+            } else {
+                showToast(data.error, 'error');
+            }
+        }
+
+        async function generateApiKey() {
+            const targetUsername = document.getElementById('key-target-user').value.trim();
+            if (!targetUsername) return showToast('Kullanıcı adı giriniz!', 'error');
+
+            const res = await fetch('/api/admin/generate-apikey', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ targetUsername })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                showToast(data.message, 'success');
+                if (targetUsername.toLowerCase() === currentUser.username.toLowerCase()) init();
+            } else {
+                showToast(data.error, 'error');
+            }
         }
 
         async function startBots() {
