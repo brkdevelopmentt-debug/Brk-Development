@@ -41,7 +41,7 @@
 
         .input-box { margin-bottom: 14px; }
         .input-box label { display: block; font-size: 12px; color: #8e92a8; margin-bottom: 6px; font-weight: 600; }
-        .input-box input, .input-box select { width: 100%; padding: 11px; background: #0a0c14; border: 1px solid #1e2238; border-radius: 8px; color: #fff; outline: none; }
+        .input-box input, .input-box select, .input-box textarea { width: 100%; padding: 11px; background: #0a0c14; border: 1px solid #1e2238; border-radius: 8px; color: #fff; outline: none; }
 
         .code-box { background: #0a0c14; border: 1px dashed #5865f2; border-radius: 8px; padding: 10px; font-family: monospace; font-size: 12px; color: #2ecc71; margin-top: 8px; word-break: break-all; }
 
@@ -98,7 +98,7 @@
 
         <div class="grid-container">
             
-            <!-- AKTİF BOT VE BAŞLATMA PANELİ -->
+            <!-- AKTİF BOT KONTROL PANELİ -->
             <div class="card customer-only" style="display: none;">
                 <h3><i class="fa-solid fa-robot" style="color: #5865f2;"></i> Bot Kontrol Paneli</h3>
                 <div class="progress-bg" style="margin-top: 10px;">
@@ -119,7 +119,7 @@
                 </div>
             </div>
 
-            <!-- SUNUCU VE SERVER.CFG API KEY AYARLARI -->
+            <!-- SUNUCU VE SERVER.CFG AYARLARI -->
             <div class="card customer-only" style="display: none;">
                 <h3><i class="fa-solid fa-server" style="color: #5865f2;"></i> Sunucu & CFG Bilgileri</h3>
                 <div class="input-box">
@@ -134,11 +134,21 @@
 
                 <div style="margin-top: 15px; border-top: 1px solid #1e2238; padding-top: 10px;">
                     <label style="font-size: 12px; color: #8e92a8; font-weight: 600;">server.cfg Dosyasına Eklenecek Kod:</label>
-                    <div class="code-box" id="cfg-code-display">set brkapikey "Atanmadı"</div>
+                    <div class="code-box" id="cfg-code-display">set brkapikey "Yükleniyor..."</div>
                 </div>
             </div>
 
-            <!-- EUR İLE PAKET SATIN ALMA -->
+            <!-- BOT İSİMLERİ AYAR KART -->
+            <div class="card customer-only" style="display: none;">
+                <h3><i class="fa-solid fa-signature" style="color: #5865f2;"></i> Bot İsim Ayarları</h3>
+                <div class="input-box">
+                    <label>Bot İsimleri (Her satıra 1 isim yazın)</label>
+                    <textarea id="bot-names-input" rows="5" placeholder="Ahmet_Kaya&#10;Mehmet_Yilmaz"></textarea>
+                </div>
+                <button class="btn" onclick="saveBotNames()">İsimleri Kaydet</button>
+            </div>
+
+            <!-- PAKET SATIN ALMA -->
             <div class="card">
                 <h3><i class="fa-solid fa-cart-shopping" style="color: #2ecc71;"></i> EUR İle Paket Satın Al</h3>
                 <div class="input-box">
@@ -164,7 +174,6 @@
             <h3><i class="fa-solid fa-shield-halved" style="color: #e74c3c;"></i> Yönetici İşlemleri</h3>
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 20px; margin-top: 15px;">
                 
-                <!-- API KEY OLUŞTURMA ALANI -->
                 <div>
                     <h4 style="margin-bottom: 10px; font-size: 14px; color: #8e92a8;">API Key Oluştur</h4>
                     <div class="input-box">
@@ -213,6 +222,7 @@
                     </div>
                     <button class="btn btn-success" onclick="addBalance()">Bakiye Yükle</button>
                 </div>
+
             </div>
         </div>
     </div>
@@ -265,8 +275,13 @@
 
                 if (currentUser.api_key) {
                     document.getElementById('cfg-code-display').innerText = `set brkapikey "${currentUser.api_key}"`;
-                } else {
-                    document.getElementById('cfg-code-display').innerText = 'API Key henüz atanamadı (Admin ile iletişime geçin)';
+                }
+
+                if (currentUser.bot_names) {
+                    try {
+                        const parsedNames = JSON.parse(currentUser.bot_names);
+                        document.getElementById('bot-names-input').value = parsedNames.join('\n');
+                    } catch(e){}
                 }
 
                 let max = currentUser.max_bots || 0;
@@ -307,6 +322,22 @@
             }
         }
 
+        async function saveBotNames() {
+            const namesText = document.getElementById('bot-names-input').value;
+            const res = await fetch('/api/user/update-bot-names', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+                body: JSON.stringify({ namesText })
+            });
+
+            const data = await res.json();
+            if (res.ok) {
+                showToast(data.message, 'success');
+            } else {
+                showToast(data.error, 'error');
+            }
+        }
+
         async function generateApiKey() {
             const targetUsername = document.getElementById('key-target-user').value.trim();
             if (!targetUsername) return showToast('Kullanıcı adı giriniz!', 'error');
@@ -328,7 +359,7 @@
 
         async function startBots() {
             const count = parseInt(document.getElementById('start-bot-count').value);
-            if (!count || count <= 0) return showToast('Lütfen geçerli bir bot sayısı girin!', 'error');
+            if (!count || count <= 0) return showToast('Geçerli bir bot sayısı girin!', 'error');
 
             const res = await fetch('/api/bot/start', {
                 method: 'POST',
