@@ -351,7 +351,7 @@
             const data = await res.json();
             if (res.ok) {
                 showToast(data.message, 'success');
-                if (targetUsername.toLowerCase() === currentUser.username.toLowerCase()) init();
+                if (currentUser && targetUsername.toLowerCase() === currentUser.username.toLowerCase()) init();
             } else {
                 showToast(data.error, 'error');
             }
@@ -426,7 +426,7 @@
             const data = await res.json();
             if (res.ok) {
                 showToast(data.message, 'success');
-                if (targetUsername.toLowerCase() === currentUser.username.toLowerCase()) setTimeout(() => location.reload(), 1000);
+                if (currentUser && targetUsername.toLowerCase() === currentUser.username.toLowerCase()) setTimeout(() => location.reload(), 1000);
             } else {
                 showToast(data.error, 'error');
             }
@@ -448,7 +448,7 @@
             const data = await res.json();
             if (res.ok) {
                 showToast(data.message, 'success');
-                if (targetUsername.toLowerCase() === currentUser.username.toLowerCase()) setTimeout(() => location.reload(), 1000);
+                if (currentUser && targetUsername.toLowerCase() === currentUser.username.toLowerCase()) setTimeout(() => location.reload(), 1000);
             } else {
                 showToast(data.error, 'error');
             }
@@ -469,7 +469,7 @@
             const data = await res.json();
             if (res.ok) {
                 showToast(data.message, 'success');
-                if (targetUsername.toLowerCase() === currentUser.username.toLowerCase()) setTimeout(() => location.reload(), 1000);
+                if (currentUser && targetUsername.toLowerCase() === currentUser.username.toLowerCase()) setTimeout(() => location.reload(), 1000);
             } else {
                 showToast(data.error, 'error');
             }

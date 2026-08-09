@@ -75,7 +75,7 @@ db.serialize(() => {
     });
 });
 
-// JWT Doğrulama
+// JWT Doğrulama (Güvenli ID ve Username Aktarımı)
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
@@ -168,9 +168,9 @@ app.post('/api/login', (req, res) => {
     });
 });
 
-// KULLANICI BİLGİLERİ
+// KULLANICI BİLGİLERİ (Hem ID hem Username Arama Koruması)
 app.get('/api/me', authenticateToken, (req, res) => {
-    db.get(`SELECT id, username, role, server_ip, cfx_link, max_bots, used_bots, expiry_date, balance, api_key, bot_names FROM users WHERE id = ?`, [req.user.id], (err, user) => {
+    db.get(`SELECT id, username, role, server_ip, cfx_link, max_bots, used_bots, expiry_date, balance, api_key, bot_names FROM users WHERE id = ? OR LOWER(username) = LOWER(?)`, [req.user.id, req.user.username], (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
         res.json(user);
     });
@@ -186,7 +186,7 @@ app.post('/api/user/update-server', authenticateToken, (req, res) => {
         }
     }
 
-    db.run(`UPDATE users SET server_ip = ?, cfx_link = ? WHERE id = ?`, [server_ip || '', cleanCfx || '', req.user.id], function(err) {
+    db.run(`UPDATE users SET server_ip = ?, cfx_link = ? WHERE id = ? OR LOWER(username) = LOWER(?)`, [server_ip || '', cleanCfx || '', req.user.id, req.user.username], function(err) {
         if (err) return res.status(500).json({ error: 'Veritabanına kaydedilemedi!' });
         res.json({ success: true, message: 'Sunucu bilgileri başarıyla kaydedildi.' });
     });
@@ -199,7 +199,7 @@ app.post('/api/user/update-bot-names', authenticateToken, (req, res) => {
 
     const namesArray = namesText.split('\n').map(n => n.trim()).filter(n => n.length > 0);
 
-    db.run(`UPDATE users SET bot_names = ? WHERE id = ?`, [JSON.stringify(namesArray), req.user.id], function(err) {
+    db.run(`UPDATE users SET bot_names = ? WHERE id = ? OR LOWER(username) = LOWER(?)`, [JSON.stringify(namesArray), req.user.id, req.user.username], function(err) {
         if (err) return res.status(500).json({ error: 'İsimler kaydedilemedi.' });
         res.json({ success: true, message: 'Bot isim listesi başarıyla güncellendi.' });
     });
@@ -212,12 +212,12 @@ app.post('/api/bot/start', authenticateToken, (req, res) => {
 
     if (isNaN(botCount) || botCount <= 0) return res.status(400).json({ error: 'Geçerli bir bot sayısı giriniz!' });
 
-    db.get(`SELECT * FROM users WHERE id = ?`, [req.user.id], (err, user) => {
+    db.get(`SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)`, [req.user.id, req.user.username], (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
         if (user.max_bots === 0) return res.status(400).json({ error: 'Aktif bot paketiniz bulunmuyor!' });
         if (botCount > user.max_bots) return res.status(400).json({ error: `En fazla ${user.max_bots} bot başlatabilirsiniz!` });
 
-        db.run(`UPDATE users SET used_bots = ? WHERE id = ?`, [botCount, req.user.id], function(err) {
+        db.run(`UPDATE users SET used_bots = ? WHERE id = ?`, [botCount, user.id], function(err) {
             if (err) return res.status(500).json({ error: 'Bot durumu güncellenemedi.' });
             res.json({ success: true, message: `${botCount} adet bot aktif edildi. Sunucuya aktarılıyor...` });
         });
@@ -226,17 +226,17 @@ app.post('/api/bot/start', authenticateToken, (req, res) => {
 
 // BOT DURDUR
 app.post('/api/bot/stop', authenticateToken, (req, res) => {
-    db.run(`UPDATE users SET used_bots = 0 WHERE id = ?`, [req.user.id], function(err) {
+    db.run(`UPDATE users SET used_bots = 0 WHERE id = ? OR LOWER(username) = LOWER(?)`, [req.user.id, req.user.username], function(err) {
         if (err) return res.status(500).json({ error: 'Botlar durdurulamadı.' });
         res.json({ success: true, message: 'Tüm botlar durduruldu.' });
     });
 });
 
-// PAKET SATIN AL
+// PAKET SATIN AL (Fixlenmiş Arama)
 app.post('/api/user/buy-package', authenticateToken, (req, res) => {
     const { bots, days, totalPrice } = req.body;
-    db.get(`SELECT * FROM users WHERE id = ?`, [req.user.id], (err, user) => {
-        if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı.' });
+    db.get(`SELECT * FROM users WHERE id = ? OR LOWER(username) = LOWER(?)`, [req.user.id, req.user.username], (err, user) => {
+        if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
         if (user.balance < totalPrice) return res.status(400).json({ error: 'Yetersiz bakiye!' });
         
         const newBalance = user.balance - totalPrice;
@@ -246,9 +246,9 @@ app.post('/api/user/buy-package', authenticateToken, (req, res) => {
         const newRole = (user.role === 'uye') ? 'musteri' : user.role;
 
         db.run(`UPDATE users SET balance = ?, max_bots = ?, expiry_date = ?, role = ? WHERE id = ?`, 
-            [newBalance, bots, formattedDate, newRole, req.user.id], function(err) {
+            [newBalance, bots, formattedDate, newRole, user.id], function(err) {
                 if (err) return res.status(500).json({ error: 'Satın alım başarısız.' });
-                res.json({ success: true, message: 'Paket tanımlandı!' });
+                res.json({ success: true, message: 'Paket başarıyla tanımlandı!' });
         });
     });
 });
@@ -270,19 +270,23 @@ app.post('/api/admin/generate-apikey', authenticateToken, (req, res) => {
 app.post('/api/admin/set-role', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ error: 'Yetkisiz erişim!' });
     const { targetUsername, newRole } = req.body;
+    if (!targetUsername) return res.status(400).json({ error: 'Kullanıcı adı giriniz!' });
+
     db.run(`UPDATE users SET role = ? WHERE LOWER(username) = LOWER(?)`, [newRole, targetUsername.trim()], function(err) {
         if (err || this.changes === 0) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
         res.json({ success: true, message: `${targetUsername} rolü ${newRole} yapıldı.` });
     });
 });
 
-// ADMIN: MANUEL BOT TANIMLA
+// ADMIN: MANUEL BOT TANIMLA (Fixlenmiş)
 app.post('/api/admin/grant-bots', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ error: 'Yetkisiz erişim!' });
     const { targetUsername, max_bots, expiry_date } = req.body;
 
+    if (!targetUsername) return res.status(400).json({ error: 'Kullanıcı adı giriniz!' });
+
     db.get(`SELECT id, role FROM users WHERE LOWER(username) = LOWER(?)`, [targetUsername.trim()], (err, targetUser) => {
-        if (err || !targetUser) return res.status(404).json({ error: 'Hedef kullanıcı bulunamadı!' });
+        if (err || !targetUser) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
 
         const targetNewRole = (targetUser.role === 'uye') ? 'musteri' : targetUser.role;
 
@@ -294,10 +298,13 @@ app.post('/api/admin/grant-bots', authenticateToken, (req, res) => {
     });
 });
 
-// ADMIN: BAKİYE EKLE
+// ADMIN: BAKİYE EKLE (Fixlenmiş)
 app.post('/api/admin/add-balance', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ error: 'Yetkisiz erişim!' });
     const { targetUsername, amount } = req.body;
+
+    if (!targetUsername) return res.status(400).json({ error: 'Kullanıcı adı giriniz!' });
+
     db.run(`UPDATE users SET balance = balance + ? WHERE LOWER(username) = LOWER(?)`, [amount, targetUsername.trim()], function(err) {
         if (err || this.changes === 0) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
         res.json({ success: true, message: `${targetUsername} hesabına ${amount} EUR yüklendi.` });
