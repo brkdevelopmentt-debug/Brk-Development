@@ -1,171 +1,143 @@
 const express = require('express');
 const sqlite3 = require('sqlite3').verbose();
+const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
-const bcrypt = require('bcrypt');
-const crypto = require('crypto');
 const path = require('path');
+const cors = require('cors');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+const JWT_SECRET = 'brk_devs_super_secret_key_2026';
+
 app.use(express.json());
+app.use(cors());
 app.use(express.static(path.join(__dirname, 'public')));
 
-const SECRET_KEY = "lux_dev_api_secret_key_change_this";
-const db = new sqlite3.Database('./database.db');
+// Ana dizine girildiğinde otomatik login.html'e yönlendir
+app.get('/', (req, res) => {
+    res.redirect('/login.html');
+});
 
-// Tabloları Hazırla
+// SQLite Veritabanı Kurulumu
+const db = new sqlite3.Database('./database.sqlite', (err) => {
+    if (err) console.error('DB Bağlantı Hatası:', err);
+    else console.log('SQLite Veritabanı Hazır.');
+});
+
 db.serialize(() => {
-    // Kullanıcılar
     db.run(`CREATE TABLE IF NOT EXISTS users (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         username TEXT UNIQUE,
         password TEXT,
-        role TEXT -- 'superadmin', 'admin', 'customer'
+        role TEXT DEFAULT 'uye',
+        server_ip TEXT DEFAULT '',
+        cfx_link TEXT DEFAULT '',
+        max_bots INTEGER DEFAULT 0,
+        used_bots INTEGER DEFAULT 0,
+        expiry_date TEXT DEFAULT ''
     )`);
 
-    // Lisanslar (API Keys)
-    db.run(`CREATE TABLE IF NOT EXISTS licenses (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        api_key TEXT UNIQUE,
-        user_id INTEGER,
-        bot_limit INTEGER,
-        active_bots INTEGER DEFAULT 0,
-        custom_names TEXT DEFAULT '',
-        expires_at INTEGER, -- Timestamp (ms)
-        created_at INTEGER
-    )`);
-
-    // Varsayılan Superadmin oluştur (Kullanıcı: admin / Şifre: admin123)
-    const hash = bcrypt.hashSync("admin123", 10);
-    db.run(`INSERT OR IGNORE INTO users (id, username, password, role) VALUES (1, 'admin', ?, 'superadmin')`, [hash]);
+    // Varsayılan Süper Admin (admin / admin123)
+    const defaultPass = bcrypt.hashSync('admin123', 10);
+    db.run(`INSERT OR IGNORE INTO users (id, username, password, role) VALUES (1, 'admin', ?, 'superadmin')`, [defaultPass]);
 });
 
-// Middleware
-const verifyToken = (req, res, next) => {
-    const token = req.headers['authorization'];
-    if (!token) return res.status(403).json({ error: "Yetkisiz erişim" });
-    jwt.verify(token.replace('Bearer ', ''), SECRET_KEY, (err, decoded) => {
-        if (err) return res.status(500).json({ error: "Geçersiz Oturum" });
-        req.user = decoded;
+// TOKEN DOĞRULAMA MIDDLEWARE
+function authenticateToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+    if (!token) return res.status(401).json({ error: 'Erişim yetkisi yok!' });
+
+    jwt.verify(token, JWT_SECRET, (err, user) => {
+        if (err) return res.status(403).json({ error: 'Geçersiz veya süresi dolmuş oturum!' });
+        req.user = user;
         next();
     });
-};
+}
 
-// Login
+// KAYIT OL
+app.post('/api/register', (req, res) => {
+    const { username, password } = req.body;
+    
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Lütfen tüm alanları doldurun!' });
+    }
+
+    if (password.length < 6 || password.length > 24) {
+        return res.status(400).json({ error: 'Şifre minimum 6, maksimum 24 karakter olmalıdır!' });
+    }
+
+    const hash = bcrypt.hashSync(password, 10);
+    db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, 'uye')`, [username, hash], function(err) {
+        if (err) return res.status(400).json({ error: 'Bu kullanıcı adı zaten alınmış!' });
+        res.json({ success: true, message: 'Kayıt başarılı! Giriş yapabilirsiniz.' });
+    });
+});
+
+// GİRİŞ YAP
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     db.get(`SELECT * FROM users WHERE username = ?`, [username], (err, user) => {
         if (!user || !bcrypt.compareSync(password, user.password)) {
-            return res.status(401).json({ error: "Hatalı kullanıcı adı veya şifre!" });
+            return res.status(400).json({ error: 'Kullanıcı adı veya şifre hatalı!' });
         }
-        const token = jwt.sign({ id: user.id, role: user.role, username: user.username }, SECRET_KEY);
-        res.json({ token, role: user.role, username: user.username });
+        const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+        res.json({ token, user: { username: user.username, role: user.role }, message: 'Giriş başarılı! Yönlendiriliyorsunuz...' });
     });
 });
 
-// Admin: Yeni API Key Üret (1 Ay, 3 Ay, 1 Yıl)
-app.post('/api/admin/generate-key', verifyToken, (req, res) => {
-    if (req.user.role !== 'superadmin' && req.user.role !== 'admin') {
-        return res.status(403).json({ error: "Yetkiniz yok!" });
+// BİLGİ GETİR
+app.get('/api/me', authenticateToken, (req, res) => {
+    db.get(`SELECT id, username, role, server_ip, cfx_link, max_bots, used_bots, expiry_date FROM users WHERE id = ?`, [req.user.id], (err, user) => {
+        if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
+        res.json(user);
+    });
+});
+
+// ADMIN ROL ATAMA
+app.post('/api/admin/set-role', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+        return res.status(403).json({ error: 'Bu işlem için yetkiniz yok!' });
+    }
+    const { targetUsername, newRole } = req.body;
+
+    if (req.user.role === 'admin' && newRole === 'superadmin') {
+        return res.status(403).json({ error: 'Admin kullanıcılar Süper Admin yetkisi veremez!' });
     }
 
-    const { target_username, bot_limit, duration_months } = req.body;
+    db.run(`UPDATE users SET role = ? WHERE username = ?`, [newRole, targetUsername], function(err) {
+        if (err) return res.status(500).json({ error: 'Veritabanı hatası!' });
+        res.json({ success: true, message: `${targetUsername} kullanıcısının rolü ${newRole} olarak güncellendi.` });
+    });
+});
+
+// ADMIN TÜM KULLANICILAR
+app.get('/api/admin/users', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin' && req.user.role !== 'superadmin') {
+        return res.status(403).json({ error: 'Yetkisiz erişim!' });
+    }
+    db.all(`SELECT id, username, role, server_ip, max_bots, expiry_date FROM users`, [], (err, rows) => {
+        res.json(rows);
+    });
+});
+
+// MÜŞTERİ SUNUCU BİLGİSİ
+app.post('/api/user/update-server', authenticateToken, (req, res) => {
+    const { server_ip, cfx_link } = req.body;
+    db.run(`UPDATE users SET server_ip = ?, cfx_link = ? WHERE id = ?`, [server_ip, cfx_link, req.user.id], (err) => {
+        if (err) return res.status(500).json({ error: 'Güncellenemedi!' });
+        res.json({ success: true, message: 'Sunucu bilgileri kaydedildi.' });
+    });
+});
+
+// ADMIN BOT SÜRE TANIMLAMA
+app.post('/api/admin/grant-bots', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ error: 'Yetkisiz!' });
+    const { targetUsername, max_bots, expiry_date } = req.body;
     
-    // Kullanıcı kontrol/oluşturma
-    db.get(`SELECT id FROM users WHERE username = ?`, [target_username], (err, user) => {
-        let userId = user ? user.id : null;
-        
-        const createLicense = (uid) => {
-            const apiKey = "LUX-" + crypto.randomBytes(8).toString('hex').toUpperCase();
-            const now = Date.now();
-            const durationMs = duration_months * 30 * 24 * 60 * 60 * 1000;
-            const expiresAt = now + durationMs;
-
-            db.run(`INSERT INTO licenses (api_key, user_id, bot_limit, created_at, expires_at) VALUES (?, ?, ?, ?, ?)`,
-                [apiKey, uid, bot_limit, now, expiresAt],
-                function(err) {
-                    if (err) return res.status(500).json({ error: "Key oluşturulamadı." });
-                    res.json({ success: true, api_key: apiKey, expires_at: new Date(expiresAt).toLocaleDateString("tr-TR") });
-                }
-            );
-        };
-
-        if (!userId) {
-            const defaultPass = bcrypt.hashSync("123456", 10);
-            db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, 'customer')`, [target_username, defaultPass], function(err) {
-                createLicense(this.lastID);
-            });
-        } else {
-            createLicense(userId);
-        }
+    db.run(`UPDATE users SET max_bots = ?, expiry_date = ?, role = 'musteri' WHERE username = ?`, [max_bots, expiry_date, targetUsername], (err) => {
+        res.json({ success: true, message: 'Bot ve süre tanımlaması yapıldı.' });
     });
 });
 
-// Kayıt Olma (Register) Endpoint
-app.post('/api/register', (req, res) => {
-    const { username, password } = req.body;
-    if (!username || !password) return res.status(400).json({ error: "Kullanıcı adı ve şifre gereklidir!" });
-
-    const hash = bcrypt.hashSync(password, 10);
-    db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, 'customer')`, [username, hash], function(err) {
-        if (err) return res.status(400).json({ error: "Bu kullanıcı adı zaten alınmış!" });
-        res.json({ success: true, message: "Kayıt başarılı." });
-    });
-});
-
-// Müşteri: Bot Ayarlarını Güncelle (Slider & İsimler)
-app.post('/api/customer/update', verifyToken, (req, res) => {
-    const { active_bots, custom_names } = req.body;
-
-    db.get(`SELECT * FROM licenses WHERE user_id = ? AND expires_at > ?`, [req.user.id, Date.now()], (err, license) => {
-        if (!license) return res.status(404).json({ error: "Aktif lisansınız bulunamadı veya süresi dolmuş!" });
-
-        if (active_bots > license.bot_limit) {
-            return res.status(400).json({ error: `Atanan bot sayısı lisans limitinizi (${license.bot_limit}) aşamaz!` });
-        }
-
-        db.run(`UPDATE licenses SET active_bots = ?, custom_names = ? WHERE id = ?`, [active_bots, custom_names, license.id], (err) => {
-            if (err) return res.status(500).json({ error: "Ayarlar kaydedilemedi." });
-            res.json({ success: true, message: "Bot ayarları başarıyla güncellendi!" });
-        });
-    });
-});
-
-// Müşteri: Lisans ve Bot Bilgilerini Çek
-app.get('/api/customer/info', verifyToken, (req, res) => {
-    db.get(`SELECT * FROM licenses WHERE user_id = ? AND expires_at > ?`, [req.user.id, Date.now()], (err, license) => {
-        if (!license) return res.json({ has_license: false });
-        res.json({
-            has_license: true,
-            api_key: license.api_key,
-            bot_limit: license.bot_limit,
-            active_bots: license.active_bots,
-            custom_names: license.custom_names,
-            expires_at: new Date(license.expires_at).toLocaleDateString("tr-TR")
-        });
-    });
-});
-
-// FiveM / RedM Script API (Script'in sorguladığı endpoint)
-app.get('/api/v1/fetch-bots', (req, res) => {
-    const apiKey = req.headers['x-api-key'] || req.query.api_key;
-
-    if (!apiKey) return res.status(401).json({ error: "API Key eksik!" });
-
-    db.get(`SELECT * FROM licenses WHERE api_key = ?`, [apiKey], (err, license) => {
-        if (!license) return res.status(403).json({ error: "Geçersiz API Key!" });
-
-        if (Date.now() > license.expires_at) {
-            return res.status(403).json({ error: "Lisans süreniz dolmuştur!" });
-        }
-
-        let nameList = license.custom_names ? license.custom_names.split(',').map(n => n.trim()) : [];
-        res.json({
-            status: "active",
-            active_bots: license.active_bots,
-            names: nameList
-        });
-    });
-});
-
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`Panel ${PORT} portunda aktif.`));
+app.listen(PORT, () => console.log(`Brk Devs sunucusu ${PORT} portunda aktif.`));
