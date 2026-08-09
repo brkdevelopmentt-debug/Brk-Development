@@ -29,24 +29,23 @@ db.serialize(() => {
         cfx_link TEXT DEFAULT '',
         max_bots INTEGER DEFAULT 0,
         used_bots INTEGER DEFAULT 0,
-        expiry_date TEXT DEFAULT ''
+        expiry_date TEXT DEFAULT '',
+        balance REAL DEFAULT 0.0
     )`);
-    db.serialize(() => {
-    // ... tablo oluşturma kodları ...
 
-    // 'KENDI_KULLANICI_ADINIZ' yazan yeri kendi kullanıcı adınızla değiştirin:
-    db.run(`UPDATE users SET role = 'superadmin' WHERE username = 'Berke'`);
-});
-
+    // Varsayılan Superadminler
     const defaultPass = bcrypt.hashSync('admin123', 10);
     db.run(`INSERT OR IGNORE INTO users (id, username, password, role) VALUES (1, 'admin', ?, 'superadmin')`, [defaultPass]);
+    
+    // Berke hesabı oluşturulmuşsa otomatik Superadmin yap
+    db.run(`UPDATE users SET role = 'superadmin' WHERE username = 'Berke'`);
 });
 
 // TOKEN DOĞRULAMA MIDDLEWARE
 function authenticateToken(req, res, next) {
     const authHeader = req.headers['authorization'];
     const token = authHeader && authHeader.split(' ')[1];
-    if (!token) return res.status(401).json({ error: 'Erişim yetkisi yok!' });
+    if (!token) return res.status(401).json({ error: 'Oturum süresi doldu veya yetkisiz erişim!' });
 
     jwt.verify(token, JWT_SECRET, (err, user) => {
         if (err) return res.status(403).json({ error: 'Geçersiz token!' });
@@ -60,70 +59,100 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
-// REGISTER (KAYIT OL VE TOKEN DÖN)
+// REGISTER
 app.post('/api/register', (req, res) => {
     const { username, password } = req.body;
     if (!username || !password) return res.status(400).json({ error: 'Lütfen tüm alanları doldurun!' });
     if (password.length < 6 || password.length > 24) return res.status(400).json({ error: 'Şifre 6-24 karakter olmalı!' });
 
     const hash = bcrypt.hashSync(password, 10);
-    db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, 'uye')`, [username, hash], function(err) {
+    const initialRole = (username.toLowerCase() === 'berke' || username.toLowerCase() === 'admin') ? 'superadmin' : 'uye';
+
+    db.run(`INSERT INTO users (username, password, role) VALUES (?, ?, ?)`, [username, hash, initialRole], function(err) {
         if (err) return res.status(400).json({ error: 'Bu kullanıcı adı zaten alınmış!' });
         
-        // Kayıt başarılı olduğunda anında token üret
-        const token = jwt.sign({ id: this.lastID, username, role: 'uye' }, JWT_SECRET, { expiresIn: '24h' });
+        const token = jwt.sign({ id: this.lastID, username, role: initialRole }, JWT_SECRET, { expiresIn: '7d' });
         res.json({ success: true, token, message: 'Kayıt başarılı!' });
     });
 });
 
-// LOGIN (GİRİŞ)
+// LOGIN
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
     db.get(`SELECT * FROM users WHERE username = ?`, [username], (err, user) => {
         if (!user || !bcrypt.compareSync(password, user.password)) {
             return res.status(400).json({ error: 'Kullanıcı adı veya şifre hatalı!' });
         }
-        const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '24h' });
+        const token = jwt.sign({ id: user.id, username: user.username, role: user.role }, JWT_SECRET, { expiresIn: '7d' });
         res.json({ token, user: { username: user.username, role: user.role }, message: 'Giriş başarılı!' });
     });
 });
 
-// KULLANICI BİLGİSİ
+// ME (KULLANICI BİLGİSİ)
 app.get('/api/me', authenticateToken, (req, res) => {
-    db.get(`SELECT id, username, role, server_ip, cfx_link, max_bots, used_bots, expiry_date FROM users WHERE id = ?`, [req.user.id], (err, user) => {
+    db.get(`SELECT id, username, role, server_ip, cfx_link, max_bots, used_bots, expiry_date, balance FROM users WHERE id = ?`, [req.user.id], (err, user) => {
         if (err || !user) return res.status(404).json({ error: 'Kullanıcı bulunamadı!' });
         res.json(user);
     });
 });
 
-// SUNUCU GÜNCELLE
+// SUNUCU AYARI GÜNCELLE
 app.post('/api/user/update-server', authenticateToken, (req, res) => {
     const { server_ip, cfx_link } = req.body;
     db.run(`UPDATE users SET server_ip = ?, cfx_link = ? WHERE id = ?`, [server_ip, cfx_link, req.user.id], (err) => {
         if (err) return res.status(500).json({ error: 'Güncellenemedi!' });
-        res.json({ success: true, message: 'Sunucu bilgileri kaydedildi.' });
+        res.json({ success: true, message: 'Sunucu bilgileri başarıyla kaydedildi.' });
     });
 });
 
-// ROL ATAMA (ADMIN)
+// PAKET SATIN AL
+app.post('/api/user/buy-package', authenticateToken, (req, res) => {
+    const { bots, days, totalPrice } = req.body;
+    db.get(`SELECT balance FROM users WHERE id = ?`, [req.user.id], (err, user) => {
+        if (user.balance < totalPrice) {
+            return res.status(400).json({ error: 'Yetersiz Bakiye! Lütfen bakiye yükleyin.' });
+        }
+        
+        const newBalance = user.balance - totalPrice;
+        const expiryDate = new Date();
+        expiryDate.setDate(expiryDate.getDate() + parseInt(days));
+        const formattedDate = expiryDate.toISOString().split('T')[0];
+
+        db.run(`UPDATE users SET balance = ?, max_bots = ?, expiry_date = ?, role = 'musteri' WHERE id = ?`, 
+            [newBalance, bots, formattedDate, req.user.id], (err) => {
+                if (err) return res.status(500).json({ error: 'Satın alım başarısız.' });
+                res.json({ success: true, message: 'Paket başarıyla satın alındı ve hesabınıza tanımlandı!' });
+        });
+    });
+});
+
+// ROL DEĞİŞTİR (ADMIN)
 app.post('/api/admin/set-role', authenticateToken, (req, res) => {
-    if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ error: 'Yetkisiz!' });
+    if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ error: 'Yetkisiz Yetkili!' });
     const { targetUsername, newRole } = req.body;
     db.run(`UPDATE users SET role = ? WHERE username = ?`, [newRole, targetUsername], (err) => {
-        res.json({ success: true, message: 'Rol güncellendi.' });
+        res.json({ success: true, message: `${targetUsername} kullanıcısının rolü ${newRole} olarak güncellendi.` });
     });
 });
 
-// BOT & SÜRE TANIMLAMA (ADMIN)
+// BOT & SÜRE TANIMLA (ADMIN)
 app.post('/api/admin/grant-bots', authenticateToken, (req, res) => {
     if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ error: 'Yetkisiz!' });
     const { targetUsername, max_bots, expiry_date } = req.body;
     db.run(`UPDATE users SET max_bots = ?, expiry_date = ?, role = 'musteri' WHERE username = ?`, [max_bots, expiry_date, targetUsername], (err) => {
-        res.json({ success: true, message: 'Bot ve süre tanımlandı.' });
+        res.json({ success: true, message: 'Bot ve süre kullanıcıya başarıyla atandı.' });
     });
 });
 
-// DİĞER TÜM ADRESLERİ LOGIN'E SÜRÜKLE
+// BAKİYE EKLE (ADMIN)
+app.post('/api/admin/add-balance', authenticateToken, (req, res) => {
+    if (req.user.role !== 'admin' && req.user.role !== 'superadmin') return res.status(403).json({ error: 'Yetkisiz!' });
+    const { targetUsername, amount } = req.body;
+    db.run(`UPDATE users SET balance = balance + ? WHERE username = ?`, [amount, targetUsername], (err) => {
+        res.json({ success: true, message: 'Bakiye yüklendi.' });
+    });
+});
+
 app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
