@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brk Development | Giriş & Kayıt</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #050810; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; background-image: radial-gradient(circle at 50% 50%, #0f172a 0%, #050810 100%); }
+        
+        .auth-container { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(20px); padding: 40px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); width: 420px; border: 1px solid rgba(56, 189, 248, 0.15); text-align: center; position: relative; overflow: hidden; }
+        
+        .logo-area { margin-bottom: 25px; }
+        .logo-area img { width: 110px; height: 110px; border-radius: 50%; border: 2px solid #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.5); margin-bottom: 15px; object-fit: cover; }
+        .logo-area h1 { font-size: 26px; color: #38bdf8; font-weight: 800; letter-spacing: 1px; }
+        
+        .input-group { text-align: left; margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 8px; font-weight: 600; }
+        input { width: 100%; padding: 14px 16px; background: rgba(3, 7, 18, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); color: white; border-radius: 10px; outline: none; transition: 0.3s; font-size: 14px; }
+        input:focus { border-color: #38bdf8; box-shadow: 0 0 12px rgba(56, 189, 248, 0.3); }
+        
+        button { width: 100%; padding: 14px; background: linear-gradient(135deg, #0ea5e9, #2563eb); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 10px; font-size: 15px; transition: 0.3s; box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4); }
+        button:hover { opacity: 0.9; transform: translateY(-2px); }
+        
+        .link-text { color: #38bdf8; font-size: 13px; cursor: pointer; margin-top: 15px; display: inline-block; transition: 0.2s; }
+        .link-text:hover { color: #e0f2fe; text-decoration: underline; }
+        
+        .view { display: none; }
+        .view.active { display: block; animation: fadeIn 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .flex-between { display: flex; justify-content: space-between; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <div class="auth-container">
+        <div class="logo-area">
+            <img src="logo.png" alt="Logo" onerror="this.src='https://via.placeholder.com/110/0f172a/38bdf8?text=BRK'">
+            <h1>Brk Development</h1>
+        </div>
+
+        <!-- 1. GİRİŞ EKRANI -->
+        <div id="view-login" class="view active">
+            <div class="input-group">
+                <label>Gmail Adresi</label>
+                <input type="email" id="login-email" placeholder="ornek@gmail.com">
+            </div>
+            <div class="input-group">
+                <label>Şifre</label>
+                <input type="password" id="login-pass" placeholder="••••••••">
+            </div>
+            <button onclick="girisYap()">Sisteme Giriş Yap</button>
+            <div class="flex-between">
+                <span class="link-text" onclick="switchView('view-register')">Hesap Oluştur</span>
+                <span class="link-text" onclick="switchView('view-forgot')">Şifremi Unuttum</span>
+            </div>
+        </div>
+
+        <!-- 2. KAYIT EKRANI (Aşama 1: Mail Onayı) -->
+        <div id="view-register" class="view">
+            <h3 style="color: #fff; margin-bottom: 15px;">Kayıt Ol</h3>
+            <div class="input-group">
+                <label>Gmail Adresi</label>
+                <input type="email" id="reg-email" placeholder="ornek@gmail.com">
+            </div>
+            <button onclick="onayKoduGonder()">Doğrulama Kodu Gönder</button>
+            <div style="text-align: center; margin-top: 10px;">
+                <span class="link-text" onclick="switchView('view-login')">Geri Dön</span>
+            </div>
+        </div>
+
+        <!-- 3. KAYIT EKRANI (Aşama 2: Kodu Gir ve Şifre Belirle) -->
+        <div id="view-register-step2" class="view">
+            <h3 style="color: #fff; margin-bottom: 15px;">Hesabı Tamamla</h3>
+            <p style="font-size: 12px; color:#34d399; margin-bottom: 15px;">Mailinize gelen doğrulama kodunu giriniz.</p>
+            <div class="input-group">
+                <label>Adınız / Kullanıcı Adı</label>
+                <input type="text" id="reg-name" placeholder="Adınız">
+            </div>
+            <div class="input-group">
+                <label>Doğrulama Kodu</label>
+                <input type="text" id="reg-code" placeholder="Örn: 4829">
+            </div>
+            <div class="input-group">
+                <label>Şifre Belirle</label>
+                <input type="password" id="reg-pass" placeholder="••••••••">
+            </div>
+            <button onclick="hesabiOlustur()">Kayıt İşlemini Tamamla</button>
+            <div style="text-align: center; margin-top: 10px;">
+                <span class="link-text" onclick="switchView('view-login')">İptal Et / Geri Dön</span>
+            </div>
+        </div>
+
+        <!-- 4. ŞİFREMİ UNUTTUM EKRANI -->
+        <div id="view-forgot" class="view">
+            <h3 style="color: #fff; margin-bottom: 15px;">Şifre Sıfırlama</h3>
+            <div class="input-group">
+                <label>Kayıtlı Gmail Adresiniz</label>
+                <input type="email" id="forgot-email" placeholder="ornek@gmail.com">
+            </div>
+            <button onclick="sifirlamaLinkiGonder()">Sıfırlama Linki Gönder</button>
+            <div style="text-align: center; margin-top: 10px;">
+                <span class="link-text" onclick="switchView('view-login')">Geri Dön</span>
+            </div>
+        </div>
+
+        <!-- 5. YENİ ŞİFRE BELİRLEME EKRANI -->
+        <div id="view-reset" class="view">
+            <h3 style="color: #fff; margin-bottom: 15px;">Yeni Şifre Belirle</h3>
+            <div class="input-group">
+                <label>Yeni Şifre</label>
+                <input type="password" id="reset-pass" placeholder="••••••••">
+            </div>
+            <div class="input-group">
+                <label>Yeni Şifreyi Onayla</label>
+                <input type="password" id="reset-pass2" placeholder="••••••••">
+            </div>
+            <button onclick="sifreyiSifirla()">Şifreyi Güncelle</button>
+        </div>
+
+    </div>
+
+    <script>
+        let gercekOnayKodu = "";
+        let islemYapanMail = "";
+
+        function switchView(viewId) {
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            document.getElementById(viewId).classList.add('active');
+        }
+
+        function girisYap() {
+            const email = document.getElementById('login-email').value.trim();
+            const pass = document.getElementById('login-pass').value.trim();
+
+            if(!email || !pass) return alert("E-mail ve şifre boş bırakılamaz!");
+
+            // Yönetici Hesabı
+            if(email === 'brkdevelopmentt@gmail.com' && pass === '145306') {
+                localStorage.setItem('brk_user', 'Berke');
+                localStorage.setItem('brk_email', email);
+                localStorage.setItem('brk_role', 'Yönetici');
+                window.location.href = '/dashboard';
+                return;
+            }
+
+            // Normal Kullanıcılar
+            let users = JSON.parse(localStorage.getItem('brk_users')) || {};
+            if(users[email] && users[email].password === pass) {
+                localStorage.setItem('brk_user', users[email].name);
+                localStorage.setItem('brk_email', email);
+                localStorage.setItem('brk_role', users[email].role);
+                window.location.href = '/dashboard';
+            } else {
+                alert("Hatalı Gmail veya Şifre!");
+            }
+        }
+
+        function onayKoduGonder() {
+            const email = document.getElementById('reg-email').value.trim();
+            if(!email.includes('@gmail.com')) return alert("Lütfen geçerli bir Gmail adresi girin!");
+            
+            gercekOnayKodu = Math.floor(1000 + Math.random() * 9000).toString();
+            islemYapanMail = email;
+            
+            alert(`[Brk Development Mail Servisi]\n\nDoğrulama Kodunuz: ${gercekOnayKodu}`);
+            switchView('view-register-step2');
+        }
+
+        function hesabiOlustur() {
+            const name = document.getElementById('reg-name').value.trim();
+            const code = document.getElementById('reg-code').value.trim();
+            const pass = document.getElementById('reg-pass').value.trim();
+
+            if(!name || !pass) return alert("İsim ve şifre boş olamaz!");
+            if(code !== gercekOnayKodu) return alert("Doğrulama kodu hatalı!");
+
+            let users = JSON.parse(localStorage.getItem('brk_users')) || {};
+            users[islemYapanMail] = { name: name, password: pass, role: 'Müşteri' };
+            localStorage.setItem('brk_users', JSON.stringify(users));
+
+            alert("Kayıt Başarılı! Şimdi giriş yapabilirsiniz.");
+            switchView('view-login');
+        }
+
+        function sifirlamaLinkiGonder() {
+            const email = document.getElementById('forgot-email').value.trim();
+            if(!email) return alert("Gmail adresi giriniz!");
+            
+            islemYapanMail = email;
+            alert(`[Brk Development Mail Servisi]\n\n${email} adresine şifre sıfırlama linki gönderildi.`);
+            switchView('view-reset');
+        }
+
+        function sifreyiSifirla() {
+            const p1 = document.getElementById('reset-pass').value;
+            const p2 = document.getElementById('reset-pass2').value;
+
+            if(p1 !== p2) return alert("Şifreler uyuşmuyor!");
+            if(p1.length < 4) return alert("Şifre çok kısa!");
+
+            if(islemYapanMail === 'brkdevelopmentt@gmail.com') {
+                alert("Kurucu hesabı bu alandan şifrelenemez!");
+                switchView('view-login');
+                return;
+            }
+
+            let users = JSON.parse(localStorage.getItem('brk_users')) || {};
+            if(users[islemYapanMail]) {
+                users[islemYapanMail].password = p1;
+                localStorage.setItem('brk_users', JSON.stringify(users));
+                alert("Şifreniz başarıyla güncellendi! Giriş yapabilirsiniz.");
+                switchView('view-login');
+            } else {
+                alert("Bu mail adresiyle kayıtlı bir hesap bulunamadı!");
+                switchView('view-login');
+            }
+        }
+    </script>
+</body>
+</html>
