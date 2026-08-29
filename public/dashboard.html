@@ -72,7 +72,6 @@
             <div class="sidebar-top">
                 <h2>Brk Development</h2>
             </div>
-            <!-- Sekmeler Burada Tanımlı -->
             <ul class="menu" id="side-menu">
                 <li class="active" onclick="tabDegis('ana', this)">🏠 Ana Panel</li>
                 <li onclick="tabDegis('bot', this)">🤖 Bot Yönetimi</li>
@@ -162,22 +161,10 @@
                         </thead>
                         <tbody>
                             <tr>
-                                <td>Berke (Sen)</td>
+                                <td>Berke (Kurucu)</td>
                                 <td><span style="color: #38bdf8; font-weight: bold;">Yönetici</span></td>
                                 <td>200 Bot</td>
                                 <td><span style="color: #10b981;">Tam Yetkili</span></td>
-                            </tr>
-                            <tr>
-                                <td>Müşteri_1</td>
-                                <td>
-                                    <select>
-                                        <option value="Üye">Üye</option>
-                                        <option value="Müşteri" selected>Müşteri</option>
-                                        <option value="Admin">Admin</option>
-                                    </select>
-                                </td>
-                                <td><input type="number" value="50" style="width: 80px;" min="1" max="200"></td>
-                                <td><button class="btn btn-primary" style="padding: 8px 16px; font-size: 13px;" onclick="alert('Güncellendi')">Kaydet</button></td>
                             </tr>
                         </tbody>
                     </table>
@@ -188,39 +175,31 @@
     </div>
 
     <script>
-        // Giriş Kontrolü
         const savedUser = localStorage.getItem('brk_user');
         const savedRole = localStorage.getItem('brk_role');
         
         if(!savedUser) {
-            window.location.href = '/'; // İzinsiz girişi engelle
+            window.location.href = '/';
         } else {
             document.getElementById('username-display').innerText = savedUser;
             document.getElementById('role-display').innerText = savedRole;
             
-            // Yöneticiyse menüyü aç
             if(savedRole === 'Yönetici') {
                 document.getElementById('menu-uyeler').style.display = 'flex';
             }
         }
 
-        // SEKMELERİ DEĞİŞTİRME FONKSİYONU (Tamamen Sorunsuz Çalışır)
         function tabDegis(tabAdi, element) {
-            // 1. Tüm tab-content'leri gizle
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            // 2. Tüm menü linklerinin aktifliğini kaldır
             document.querySelectorAll('#side-menu li').forEach(el => el.classList.remove('active'));
             
-            // 3. Tıklananı göster ve aktif yap
             document.getElementById('tab-' + tabAdi).classList.add('active');
             element.classList.add('active');
 
-            // 4. Başlığı güncelle
             const titles = { 'ana': 'Genel Bakış', 'bot': 'Bot Yönetimi', 'api': 'API Anahtarı Yönetimi', 'uyeler': 'Üye ve Yetki Yönetimi' };
             document.getElementById('page-title').innerText = titles[tabAdi];
         }
 
-        // Bot Slider
         function sliderGuncelle(val) { document.getElementById('botNumber').value = val; }
         function inputGuncelle(val) {
             if(val > 200) val = 200;
@@ -234,7 +213,6 @@
             alert(`Brk Development: ${count} adet bot başarıyla ${durum}.`);
         }
 
-        // API Key Sistemi
         function ApiKeyDegistir() {
             const lastChange = localStorage.getItem('brk_apikey_time');
             const now = new Date().getTime();
@@ -246,13 +224,12 @@
                 return;
             }
 
-            const yeniKey = 'brk_live_' + Math.random().toString(36.substring(2, 15)) + Math.random().toString(36).substring(2, 15);
+            const yeniKey = 'brk_live_' + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
             document.getElementById('apiKeyDisplay').innerText = yeniKey;
             localStorage.setItem('brk_apikey_time', now);
             document.getElementById('cooldownMsg').innerText = "✅ API anahtarı yenilendi!";
         }
 
-        // Çıkış
         function cikisYap() {
             localStorage.removeItem('brk_user');
             localStorage.removeItem('brk_role');

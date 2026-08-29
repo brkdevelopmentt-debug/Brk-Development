@@ -1,12 +1,12 @@
 {
-  "name": "fake-players",
-  "version": "2.0.0",
-  "description": "Brk Development - Fake Players Panel",
+  "name": "brk-development",
+  "version": "1.0.0",
+  "description": "Brk Development Panel",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.19.2"
   }
 }
