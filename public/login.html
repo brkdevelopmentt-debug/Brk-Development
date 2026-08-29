@@ -11,7 +11,7 @@
         .auth-container { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(20px); padding: 40px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); width: 420px; border: 1px solid rgba(56, 189, 248, 0.15); text-align: center; position: relative; overflow: hidden; }
         
         .logo-area { margin-bottom: 25px; }
-        .logo-area img { width: 100px; height: 100px; border-radius: 50%; border: 2px solid #38bdf8; box-shadow: 0 0 15px rgba(56, 189, 248, 0.4); margin-bottom: 15px; object-fit: cover; }
+        .logo-area img { width: 110px; height: 110px; border-radius: 50%; border: 2px solid #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.5); margin-bottom: 15px; object-fit: cover; }
         .logo-area h1 { font-size: 26px; color: #38bdf8; font-weight: 800; letter-spacing: 1px; }
         
         .input-group { text-align: left; margin-bottom: 15px; }
@@ -36,7 +36,7 @@
 
     <div class="auth-container">
         <div class="logo-area">
-            <img src="logo.png" alt="Logo" onerror="this.src='https://via.placeholder.com/100/0f172a/38bdf8?text=BRK'">
+            <img src="logo.png" alt="Logo" onerror="this.src='https://via.placeholder.com/110/0f172a/38bdf8?text=BRK'">
             <h1>Brk Development</h1>
         </div>
 
@@ -65,15 +65,17 @@
                 <input type="email" id="reg-email" placeholder="ornek@gmail.com">
             </div>
             <button onclick="onayKoduGonder()">Doğrulama Kodu Gönder</button>
-            <span class="link-text" onclick="switchView('view-login')">Geri Dön</span>
+            <div style="text-align: center; margin-top: 10px;">
+                <span class="link-text" onclick="switchView('view-login')">Geri Dön</span>
+            </div>
         </div>
 
         <!-- 3. KAYIT EKRANI (Aşama 2: Kodu Gir ve Şifre Belirle) -->
         <div id="view-register-step2" class="view">
             <h3 style="color: #fff; margin-bottom: 15px;">Hesabı Tamamla</h3>
-            <p style="font-size: 12px; color:#34d399; margin-bottom: 15px;">Mailinize gelen kodu giriniz.</p>
+            <p style="font-size: 12px; color:#34d399; margin-bottom: 15px;">Mailinize gelen doğrulama kodunu giriniz.</p>
             <div class="input-group">
-                <label>İsim / Kullanıcı Adı</label>
+                <label>Adınız / Kullanıcı Adı</label>
                 <input type="text" id="reg-name" placeholder="Adınız">
             </div>
             <div class="input-group">
@@ -81,10 +83,13 @@
                 <input type="text" id="reg-code" placeholder="Örn: 4829">
             </div>
             <div class="input-group">
-                <label>Yeni Şifre</label>
+                <label>Şifre Belirle</label>
                 <input type="password" id="reg-pass" placeholder="••••••••">
             </div>
             <button onclick="hesabiOlustur()">Kayıt İşlemini Tamamla</button>
+            <div style="text-align: center; margin-top: 10px;">
+                <span class="link-text" onclick="switchView('view-login')">İptal Et / Geri Dön</span>
+            </div>
         </div>
 
         <!-- 4. ŞİFREMİ UNUTTUM EKRANI -->
@@ -95,7 +100,9 @@
                 <input type="email" id="forgot-email" placeholder="ornek@gmail.com">
             </div>
             <button onclick="sifirlamaLinkiGonder()">Sıfırlama Linki Gönder</button>
-            <span class="link-text" onclick="switchView('view-login')">Geri Dön</span>
+            <div style="text-align: center; margin-top: 10px;">
+                <span class="link-text" onclick="switchView('view-login')">Geri Dön</span>
+            </div>
         </div>
 
         <!-- 5. YENİ ŞİFRE BELİRLEME EKRANI -->
@@ -106,7 +113,7 @@
                 <input type="password" id="reset-pass" placeholder="••••••••">
             </div>
             <div class="input-group">
-                <label>Şifreyi Onayla</label>
+                <label>Yeni Şifreyi Onayla</label>
                 <input type="password" id="reset-pass2" placeholder="••••••••">
             </div>
             <button onclick="sifreyiSifirla()">Şifreyi Güncelle</button>
@@ -118,20 +125,18 @@
         let gercekOnayKodu = "";
         let islemYapanMail = "";
 
-        // Ekranları değiştirme fonksiyonu
         function switchView(viewId) {
             document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
             document.getElementById(viewId).classList.add('active');
         }
 
-        // --- GİRİŞ SİSTEMİ ---
         function girisYap() {
             const email = document.getElementById('login-email').value.trim();
             const pass = document.getElementById('login-pass').value.trim();
 
             if(!email || !pass) return alert("E-mail ve şifre boş bırakılamaz!");
 
-            // Özel Kurucu/Yönetici Hesabı Kontrolü
+            // Yönetici Hesabı
             if(email === 'brkdevelopmentt@gmail.com' && pass === '145306') {
                 localStorage.setItem('brk_user', 'Berke');
                 localStorage.setItem('brk_email', email);
@@ -140,7 +145,7 @@
                 return;
             }
 
-            // Normal kullanıcılar için veritabanı (localStorage) kontrolü
+            // Normal Kullanıcılar
             let users = JSON.parse(localStorage.getItem('brk_users')) || {};
             if(users[email] && users[email].password === pass) {
                 localStorage.setItem('brk_user', users[email].name);
@@ -152,16 +157,14 @@
             }
         }
 
-        // --- KAYIT SİSTEMİ ---
         function onayKoduGonder() {
             const email = document.getElementById('reg-email').value.trim();
             if(!email.includes('@gmail.com')) return alert("Lütfen geçerli bir Gmail adresi girin!");
             
-            // Simülasyon: Rastgele 4 haneli kod oluştur ve ekrana bas (Gerçekte maile gider)
             gercekOnayKodu = Math.floor(1000 + Math.random() * 9000).toString();
             islemYapanMail = email;
             
-            alert(`[Brk Development Mail Servisi]\n\nBu mesaj mail adresinize gelmiş gibi varsayın.\n\nDoğrulama Kodunuz: ${gercekOnayKodu}`);
+            alert(`[Brk Development Mail Servisi]\n\nDoğrulama Kodunuz: ${gercekOnayKodu}`);
             switchView('view-register-step2');
         }
 
@@ -181,13 +184,12 @@
             switchView('view-login');
         }
 
-        // --- ŞİFRE SIFIRLAMA SİSTEMİ ---
         function sifirlamaLinkiGonder() {
             const email = document.getElementById('forgot-email').value.trim();
             if(!email) return alert("Gmail adresi giriniz!");
             
             islemYapanMail = email;
-            alert(`[Brk Development Mail Servisi]\n\n${email} adresine şifre sıfırlama linki gönderildi.\n\nTamam'a bastığınızda linke tıklamışsınız gibi sıfırlama ekranına yönlendirileceksiniz.`);
+            alert(`[Brk Development Mail Servisi]\n\n${email} adresine şifre sıfırlama linki gönderildi.`);
             switchView('view-reset');
         }
 
@@ -198,9 +200,8 @@
             if(p1 !== p2) return alert("Şifreler uyuşmuyor!");
             if(p1.length < 4) return alert("Şifre çok kısa!");
 
-            // Eğer yönetici hesabıysa uyarı ver
             if(islemYapanMail === 'brkdevelopmentt@gmail.com') {
-                alert("Kurucu hesabının şifresi sistem dışından sıfırlanamaz!");
+                alert("Kurucu hesabı bu alandan şifrelenemez!");
                 switchView('view-login');
                 return;
             }
