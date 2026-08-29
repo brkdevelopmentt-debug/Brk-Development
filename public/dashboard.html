@@ -3,35 +3,111 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>fake-players - Kontrol Paneli</title>
+    <title>fake-players | Yönetim Paneli</title>
     <style>
-        body { background-color: #121212; color: #ffffff; font-family: sans-serif; margin: 0; display: flex; }
-        .sidebar { width: 260px; background-color: #181818; height: 100vh; padding: 20px; box-sizing: border-box; border-right: 2px solid #282828; }
-        .sidebar h2 { color: #00bfff; text-align: center; font-size: 20px; margin-bottom: 30px; }
-        .sidebar ul { list-style: none; padding: 0; }
-        .sidebar ul li { padding: 12px 15px; border-radius: 5px; margin-bottom: 5px; cursor: pointer; transition: 0.2s; }
-        .sidebar ul li:hover { background-color: #282828; color: #00bfff; }
-        .content { flex: 1; padding: 40px; box-sizing: border-box; }
-        .card { background-color: #1e1e1e; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #282828; }
-        .badge { background: #00bfff; color: #121212; padding: 3px 8px; border-radius: 4px; font-weight: bold; font-size: 12px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #0b0f19; color: #fff; display: flex; height: 100vh; overflow: hidden; }
+        
+        /* Sidebar */
+        .sidebar { width: 260px; background: #111827; border-right: 1px solid #1f293d; display: flex; flex-direction: column; justify-content: space-between; padding: 20px; }
+        .sidebar-top h2 { color: #00d2ff; font-size: 20px; text-align: center; margin-bottom: 30px; letter-spacing: 1px; }
+        .menu { list-style: none; }
+        .menu li { padding: 12px 15px; border-radius: 8px; margin-bottom: 8px; cursor: pointer; transition: 0.2s; color: #9ca3af; font-weight: 500; }
+        .menu li:hover, .menu li.active { background: #1f293d; color: #00d2ff; }
+        .logout { color: #ef4444 !important; }
+        .logout:hover { background: rgba(239, 68, 68, 0.1) !important; }
+
+        /* Content Area */
+        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        
+        /* Topbar */
+        .topbar { background: #111827; border-bottom: 1px solid #1f293d; padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; }
+        .topbar-title { font-size: 18px; font-weight: bold; color: #e5e7eb; }
+        .user-badge { display: flex; align-items: center; gap: 12px; background: #1f293d; padding: 8px 15px; border-radius: 20px; border: 1px solid #374151; }
+        .user-dot { width: 10px; height: 10px; background: #10b981; border-radius: 50%; box-shadow: 0 0 8px #10b981; }
+
+        /* Dashboard Body */
+        .dashboard-body { padding: 40px; }
+        .grid-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 30px; }
+        .card { background: #131b2e; border: 1px solid #1f293d; border-radius: 12px; padding: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+        .card h4 { color: #9ca3af; font-size: 13px; text-transform: uppercase; margin-bottom: 10px; letter-spacing: 0.5px; }
+        .card .value { font-size: 26px; font-weight: bold; color: #00d2ff; }
+
+        .control-section { background: #131b2e; border: 1px solid #1f293d; border-radius: 12px; padding: 30px; }
+        .control-section h3 { margin-bottom: 20px; font-size: 18px; border-bottom: 1px solid #1f293d; padding-bottom: 10px; }
+        .btn-group { display: flex; gap: 15px; }
+        .btn { padding: 12px 25px; border-radius: 8px; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-start { background: #10b981; color: white; }
+        .btn-start:hover { background: #059669; box-shadow: 0 0 10px rgba(16, 185, 129, 0.4); }
+        .btn-stop { background: #ef4444; color: white; }
+        .btn-stop:hover { background: #dc2626; box-shadow: 0 0 10px rgba(239, 68, 68, 0.4); }
     </style>
 </head>
 <body>
+
     <div class="sidebar">
-        <h2>fake-players</h2>
-        <ul>
-            <li>🏠 Ana Kontrol</li>
-            <li>👥 Oyuncu Yönetimi</li>
-            <li>⚙️ Bot Ayarları</li>
-            <li onclick="window.location.href='/'" style="color: #ff4d4d; margin-top: 50px;">🚪 Çıkış Yap</li>
+        <div class="sidebar-top">
+            <h2>fake-players</h2>
+            <ul class="menu">
+                <li class="active">🏠 Ana Panel</li>
+                <li>🤖 Bot Yönetimi</li>
+                <li>⚙️ Sistem Ayarları</li>
+            </ul>
+        </div>
+        <ul class="menu">
+            <li class="logout" onclick="cikisYap()">🚪 Güvenli Çıkış</li>
         </ul>
     </div>
-    <div class="content">
-        <h1>Hoş geldin, <span style="color: #00bfff;">Brk</span></h1>
-        <div class="card">
-            <h3>Durum <span class="badge">AKTİF</span></h3>
-            <p>fake-players altyapısı hazır. İstediğin fonksiyonları ve script entegrasyonlarını buraya döşeyebilirsin.</p>
+
+    <div class="main-content">
+        <div class="topbar">
+            <div class="topbar-title">Genel Bakış</div>
+            <div class="user-badge">
+                <div class="user-dot"></div>
+                <span id="username-display">Brk</span> &nbsp;|&nbsp; <span style="color: #00d2ff; font-weight: bold;">Yönetici</span>
+            </div>
+        </div>
+
+        <div class="dashboard-body">
+            <div class="grid-cards">
+                <div class="card">
+                    <h4>API Durumu</h4>
+                    <div class="value" style="color: #10b981;">Aktif</div>
+                </div>
+                <div class="card">
+                    <h4>Maksimum Bot</h4>
+                    <div class="value">50</div>
+                </div>
+                <div class="card">
+                    <h4>Aktif Bot Sayısı</h4>
+                    <div class="value">0</div>
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>Bot Komuta Merkezi</h3>
+                <div class="btn-group">
+                    <button class="btn btn-start" onclick="islemYap('Başlatıldı')">Botları Başlat</button>
+                    <button class="btn btn-stop" onclick="islemYap('Durduruldu')">Botları Durdur</button>
+                </div>
+            </div>
         </div>
     </div>
+
+    <script>
+        const savedUser = localStorage.getItem('brk_user');
+        if(savedUser) {
+            document.getElementById('username-display').innerText = savedUser;
+        }
+
+        function cikisYap() {
+            localStorage.removeItem('brk_user');
+            window.location.href = '/';
+        }
+
+        function islemYap(durum) {
+            alert('fake-players sistemi: ' + durum);
+        }
+    </script>
 </body>
 </html>
