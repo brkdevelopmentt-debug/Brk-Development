@@ -136,7 +136,7 @@
 
             if(!email || !pass) return alert("E-mail ve şifre boş bırakılamaz!");
 
-            // Yönetici Hesabı
+            // Yönetici Hesabı (brkdevelopmentt@gmail.com / 145306)
             if(email === 'brkdevelopmentt@gmail.com' && pass === '145306') {
                 localStorage.setItem('brk_user', 'Berke');
                 localStorage.setItem('brk_email', email);
@@ -189,7 +189,7 @@
             if(!email) return alert("Gmail adresi giriniz!");
             
             islemYapanMail = email;
-            alert(`[Brk Development Mail Servisi]\n\n${email} adresine şifre sıfırlama linki gönderildi.`);
+            alert(`[Brk Development Mail Servisi]\n\n${email} adresine şifre sıfırlama linki gönderildi. Tıkladınız varsayılıyor.`);
             switchView('view-reset');
         }
 
