@@ -3,29 +3,37 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>fake-players | Giriş</title>
+    <title>Brk Development | Giriş</title>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #0b0f19; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; }
-        .login-card { background: #131b2e; padding: 40px; border-radius: 12px; box-shadow: 0 0 25px rgba(0, 210, 255, 0.15); width: 380px; border: 1px solid #1f293d; text-align: center; }
-        .logo-area { margin-bottom: 25px; }
-        .logo-area img { width: 65px; height: 65px; border-radius: 50%; margin-bottom: 12px; border: 2px solid #00d2ff; object-fit: cover; }
-        .logo-area h1 { font-size: 22px; color: #00d2ff; letter-spacing: 1px; }
-        input { width: 100%; padding: 12px; margin: 10px 0; background: #0b0f19; border: 1px solid #2a3b5e; color: white; border-radius: 6px; outline: none; transition: 0.3s; }
-        input:focus { border-color: #00d2ff; box-shadow: 0 0 8px rgba(0, 210, 255, 0.3); }
-        button { width: 100%; padding: 12px; background: linear-gradient(135deg, #00d2ff, #0076ff); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; margin-top: 15px; transition: 0.3s; }
-        button:hover { opacity: 0.9; transform: translateY(-1px); }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', 'Segoe UI', sans-serif; }
+        body { background: #07090e; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; background-image: radial-gradient(circle at 50% 50%, #111827 0%, #07090e 100%); }
+        .login-card { background: rgba(17, 24, 39, 0.7); backdrop-filter: blur(16px); padding: 45px; border-radius: 16px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4); width: 400px; border: 1px solid rgba(255, 255, 255, 0.08); text-align: center; }
+        .logo-area { margin-bottom: 30px; }
+        .logo-area h1 { font-size: 24px; color: #38bdf8; letter-spacing: 0.5px; font-weight: 700; }
+        .logo-area p { color: #64748b; font-size: 13px; margin-top: 5px; }
+        .input-group { text-align: left; margin-bottom: 15px; }
+        .input-group label { display: block; font-size: 12px; color: #94a3b8; margin-bottom: 6px; font-weight: 500; }
+        input { width: 100%; padding: 12px 16px; background: rgba(3, 7, 18, 0.6); border: 1px solid rgba(255, 255, 255, 0.1); color: white; border-radius: 8px; outline: none; transition: 0.3s; font-size: 14px; }
+        input:focus { border-color: #38bdf8; box-shadow: 0 0 12px rgba(56, 189, 248, 0.25); }
+        button { width: 100%; padding: 12px; background: linear-gradient(135deg, #0ea5e9, #2563eb); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 15px; transition: 0.3s; font-size: 14px; box-shadow: 0 4px 12px rgba(14, 165, 233, 0.3); }
+        button:hover { opacity: 0.95; transform: translateY(-1px); box-shadow: 0 6px 16px rgba(14, 165, 233, 0.4); }
     </style>
 </head>
 <body>
     <div class="login-card">
         <div class="logo-area">
-            <img src="logo.png" alt="Logo" onerror="this.style.display='none'">
-            <h1>BRK DEVS</h1>
+            <h1>Brk Development</h1>
+            <p>Fake Players Panel v2.0</p>
         </div>
-        <input type="text" id="user" placeholder="Kullanıcı Adı">
-        <input type="password" id="pass" placeholder="Şifre">
-        <button onclick="girisYap()">Sisteme Giriş Yap</button>
+        <div class="input-group">
+            <label>Kullanıcı Adı</label>
+            <input type="text" id="user" placeholder="Kullanıcı adınızı girin">
+        </div>
+        <div class="input-group">
+            <label>Şifre</label>
+            <input type="password" id="pass" placeholder="••••••••">
+        </div>
+        <button onclick="girisYap()">Panele Bağlan</button>
     </div>
 
     <script>
@@ -33,6 +41,7 @@
             const u = document.getElementById('user').value;
             if(u.trim() !== "") {
                 localStorage.setItem('brk_user', u);
+                localStorage.setItem('brk_role', u.toLowerCase() === 'berke' || u.toLowerCase() === 'brk' ? 'Yönetici' : 'Müşteri');
                 window.location.href = '/dashboard';
             } else {
                 alert('Kullanıcı adını boş bırakma gardaş!');

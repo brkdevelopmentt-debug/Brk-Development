@@ -1,7 +1,7 @@
 {
   "name": "fake-players",
-  "version": "1.0.0",
-  "description": "Brk - Fake Players Panel",
+  "version": "2.0.0",
+  "description": "Brk Development - Fake Players Panel",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
