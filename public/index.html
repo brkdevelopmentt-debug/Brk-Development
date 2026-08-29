@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Brk Development - Panel</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body { background-color: #050505; color: #e4e4e7; font-family: 'Segoe UI', system-ui, sans-serif; }
+        .navbar { background-color: #09090b; border-bottom: 1px solid #1f1f23; padding: 15px 30px; }
+        .navbar-brand { color: #6366f1 !important; font-weight: 800; text-transform: uppercase; letter-spacing: 1px; }
+        .card { background-color: #0f0f11; border: 1px solid #1f1f23; border-radius: 12px; box-shadow: 0 4px 20px rgba(0,0,0,0.2); }
+        .card-header-custom { border-bottom: 1px solid #1f1f23; padding-bottom: 15px; margin-bottom: 20px; }
+        .form-control, .form-select { background-color: #18181b; border: 1px solid #27272a; color: #fff; padding: 10px 15px; border-radius: 8px; }
+        .form-control:focus, .form-select:focus { background-color: #18181b; color: #fff; border-color: #6366f1; box-shadow: none; }
+        .btn-start { background-color: #10b981; color: #000; font-weight: 700; border: none; border-radius: 8px; }
+        .btn-start:hover { background-color: #059669; color: #fff; }
+        .btn-stop { background-color: #ef4444; color: #fff; font-weight: 700; border: none; border-radius: 8px; }
+        .btn-stop:hover { background-color: #dc2626; }
+        .btn-brand { background-color: #6366f1; color: white; font-weight: 600; border: none; border-radius: 8px; }
+        .btn-brand:hover { background-color: #4f46e5; color: white; }
+        .stat-value { font-size: 2rem; font-weight: 800; }
+        .stat-label { color: #a1a1aa; font-size: 0.85rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.5px; }
+        label { color: #a1a1aa; font-size: 13px; font-weight: 500; margin-bottom: 6px; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar d-flex justify-content-between align-items-center">
+    <a class="navbar-brand" href="#">BRK DEVELOPMENT</a>
+    <div>
+        <span class="me-4 text-muted">Kullanıcı: <strong id="lblUsername" class="text-white">-</strong></span>
+        <span class="text-muted">Bakiye: <strong id="lblBalance" class="text-success" style="font-size: 1.1rem;">0.00 €</strong></span>
+    </div>
+</nav>
+
+<div class="container py-5">
+    <!-- Stat Kartları -->
+    <div class="row g-4 mb-4">
+        <div class="col-md-4">
+            <div class="card p-4 h-100 text-center">
+                <div class="stat-label mb-2">API Key</div>
+                <div class="text-warning text-truncate mt-auto" id="displayApiKey" style="font-size: 14px; background: #18181b; padding: 10px; border-radius: 6px; border: 1px solid #27272a;">Yükleniyor...</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-4 h-100 text-center">
+                <div class="stat-label mb-2">Maksimum Bot Hakkı</div>
+                <div class="stat-value text-info mt-auto" id="displayMaxBots">0</div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card p-4 h-100 text-center">
+                <div class="stat-label mb-2">Aktif Bot Sayısı</div>
+                <div class="stat-value text-success mt-auto" id="displayActiveBots">0</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4">
+        <!-- Bot Yönetimi ve Satın Alma -->
+        <div class="col-md-6">
+            <div class="card p-4 mb-4">
+                <div class="card-header-custom">
+                    <h5 class="text-white m-0">🤖 Bot Yönetimi</h5>
+                </div>
+                <input type="number" id="botCountInput" class="form-control mb-3" placeholder="Başlatılacak bot miktarını girin">
+                <div class="d-flex gap-2">
+                    <button id="btnStartBot" class="btn btn-start w-50 py-2">Başlat</button>
+                    <button id="btnStopBot" class="btn btn-stop w-50 py-2">Durdur</button>
+                </div>
+            </div>
+
+            <div class="card p-4">
+                <div class="card-header-custom">
+                    <h5 class="text-white m-0">🛒 Paket Satın Al</h5>
+                </div>
+                <div class="mb-3">
+                    <label>Süre Seçimi</label>
+                    <select class="form-select" id="packageSelect">
+                        <option value="1">1 Aylık (30 Gün) - Bot Paketi</option>
+                    </select>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Toplam Tutar:</span>
+                    <span class="text-success fw-bold fs-5">10.00 €</span>
+                </div>
+                <button id="btnBuyPackage" class="btn btn-brand w-100 py-2">⚡ Bakiyeyle Satın Al</button>
+            </div>
+        </div>
+
+        <!-- Yönetici İşlemleri -->
+        <div class="col-md-6" id="adminPanelBlock" style="display: none;">
+            <div class="card p-4 h-100" style="border-color: #991b1b; box-shadow: 0 0 15px rgba(153, 27, 27, 0.1);">
+                <div class="card-header-custom" style="border-bottom-color: #450a0a;">
+                    <h5 class="text-danger m-0">🛡️ Yönetici İşlemleri</h5>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="text-danger">Manuel Bot & Süre Tanımla</label>
+                    <input type="text" id="adminPackageUser" class="form-control mb-2" placeholder="Kullanıcı Adı">
+                    <input type="number" id="adminPackageBots" class="form-control mb-2" placeholder="Bot Miktarı (Örn: 50)">
+                    <input type="date" id="adminPackageDate" class="form-control mb-2">
+                    <button id="btnAdminSetPackage" class="btn btn-danger w-100">Paketi Onayla</button>
+                </div>
+
+                <hr style="border-color: #27272a;">
+
+                <div>
+                    <label class="text-success">Bakiye Yükle (EUR)</label>
+                    <input type="text" id="adminBalanceUser" class="form-control mb-2" placeholder="Kullanıcı Adı">
+                    <input type="number" id="adminBalanceAmount" class="form-control mb-2" placeholder="Tutar (Örn: 50)">
+                    <button id="btnAdminAddBalance" class="btn btn-success w-100">Bakiye Ekle</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
