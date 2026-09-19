@@ -1,247 +1,62 @@
-<!DOCTYPE html>
-<html lang="tr">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Brk Development | Ultra Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" rel="stylesheet">
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; }
-        body { background: #030014; color: #fff; display: flex; height: 100vh; overflow: hidden; }
+<script>
+// Sayfa yüklendiğinde kullanıcı listesini otomatik çek
+document.addEventListener('DOMContentLoaded', () => {
+    loadAdminUsers();
+});
+
+// API'den üyeleri çeker ve listeler
+async function loadAdminUsers() {
+    try {
+        const response = await fetch('/api/get-users');
+        const data = await response.json();
         
-        /* Neon Effect Sidebar */
-        .sidebar { width: 280px; background: rgba(15, 12, 41, 0.7); backdrop-filter: blur(20px); border-right: 1px solid rgba(112, 0, 255, 0.2); display: flex; flex-direction: column; justify-content: space-between; padding: 30px 20px; box-shadow: 10px 0 30px rgba(0,0,0,0.5); z-index: 10; }
-        .brand { text-align: center; font-size: 24px; font-weight: 800; background: linear-gradient(135deg, #a855f7, #3b82f6, #06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 40px; text-shadow: 0 0 20px rgba(168, 85, 247, 0.4); }
-        .menu { list-style: none; }
-        .menu li { padding: 16px 20px; border-radius: 14px; margin-bottom: 10px; cursor: pointer; transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1); color: #94a3b8; font-weight: 600; font-size: 15px; display: flex; align-items: center; gap: 12px; }
-        .menu li:hover { background: rgba(168, 85, 247, 0.15); color: #fff; transform: translateX(5px); }
-        .menu li.active { background: linear-gradient(135deg, #7c3aed, #2563eb); color: #fff; box-shadow: 0 0 20px rgba(124, 58, 237, 0.5); font-weight: 700; }
-
-        /* Main Content Area */
-        .main-content { flex: 1; display: flex; flex-direction: column; overflow-y: auto; background: radial-gradient(circle at 80% 20%, rgba(124, 58, 237, 0.15) 0%, rgba(3, 0, 20, 1) 70%); }
-        .topbar { background: rgba(15, 12, 41, 0.5); backdrop-filter: blur(15px); border-bottom: 1px solid rgba(255, 255, 255, 0.05); padding: 20px 40px; display: flex; justify-content: space-between; align-items: center; sticky: top; }
-        .topbar-title { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
-        .user-badge { display: flex; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.05); padding: 10px 22px; border-radius: 40px; border: 1px solid rgba(168, 85, 247, 0.3); box-shadow: 0 0 15px rgba(168, 85, 247, 0.2); }
-        .user-dot { width: 10px; height: 10px; background: #22c55e; border-radius: 50%; box-shadow: 0 0 10px #22c55e; }
-
-        .dashboard-body { padding: 40px; }
-        .tab-content { display: none; animation: fadeIn 0.4s ease-out; }
-        .tab-content.active { display: block; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-
-        /* Colorful Glowing Cards */
-        .grid-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 25px; margin-bottom: 35px; }
-        .card { background: rgba(20, 15, 50, 0.6); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 20px; padding: 25px; transition: 0.3s; position: relative; overflow: hidden; }
-        .card:hover { transform: translateY(-5px); border-color: rgba(168, 85, 247, 0.4); box-shadow: 0 10px 30px rgba(124, 58, 237, 0.2); }
-        .card h4 { color: #a7f3d0; font-size: 13px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; font-weight: 700; }
-        .card .value { font-size: 36px; font-weight: 800; background: linear-gradient(135deg, #fff, #c084fc); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-
-        .section-box { background: rgba(20, 15, 50, 0.5); backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; padding: 35px; margin-bottom: 30px; box-shadow: 0 20px 40px rgba(0,0,0,0.4); }
-        .section-box h3 { font-size: 20px; font-weight: 800; margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 15px; color: #f3e8ff; }
-
-        /* Neon Controls */
-        .slider-container { display: flex; align-items: center; gap: 25px; margin-top: 25px; }
-        input[type="range"] { flex: 1; accent-color: #a855f7; height: 10px; background: #1e1b4b; border-radius: 5px; outline: none; }
-        .slider-input { width: 110px; padding: 14px; background: #09051d; border: 2px solid #7c3aed; color: #a855f7; border-radius: 14px; font-weight: 800; text-align: center; font-size: 20px; outline: none; box-shadow: 0 0 15px rgba(124, 58, 237, 0.3); }
-
-        .btn-group { display: flex; gap: 20px; margin-top: 35px; }
-        .btn { padding: 16px 32px; border-radius: 14px; border: none; font-weight: 800; cursor: pointer; transition: 0.3s; font-size: 15px; letter-spacing: 0.5px; }
-        .btn-start { background: linear-gradient(135deg, #10b981, #059669); color: white; box-shadow: 0 0 20px rgba(16, 185, 129, 0.4); }
-        .btn-start:hover { box-shadow: 0 0 30px rgba(16, 185, 129, 0.7); transform: scale(1.02); }
-        .btn-stop { background: linear-gradient(135deg, #f43f5e, #e11d48); color: white; box-shadow: 0 0 20px rgba(244, 63, 94, 0.4); }
-        .btn-stop:hover { box-shadow: 0 0 30px rgba(244, 63, 94, 0.7); transform: scale(1.02); }
-        .btn-primary { background: linear-gradient(135deg, #8b5cf6, #6366f1); color: white; box-shadow: 0 0 20px rgba(139, 92, 246, 0.4); }
-
-        textarea { width: 100%; height: 250px; background: #09051d; border: 1px solid rgba(168, 85, 247, 0.3); border-radius: 14px; color: #c084fc; padding: 20px; font-family: monospace; font-size: 15px; outline: none; resize: vertical; margin-top: 15px; }
-
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 18px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
-        th { color: #a78bfa; font-weight: 700; font-size: 13px; text-transform: uppercase; }
-        input.limit-input { width: 90px; padding: 10px; background: #09051d; border: 1px solid #8b5cf6; color: #fff; border-radius: 10px; text-align: center; font-weight: 800; }
-    </style>
-</head>
-<body>
-
-    <div class="sidebar">
-        <div>
-            <div class="brand">BRK DEVS</div>
-            <ul class="menu" id="side-menu">
-                <li class="active" onclick="tabDegis('ana', this)">⚡ Ana Panel</li>
-                <li onclick="tabDegis('bot', this)">🤖 Bot Komuta</li>
-                <li onclick="tabDegis('names', this)">📝 İsim Listesi</li>
-                <li onclick="tabDegis('api', this)">🔑 API Key</li>
-                <li id="menu-uyeler" style="display:none;" onclick="tabDegis('uyeler', this)">👑 Admin & Üye Yetki</li>
-            </ul>
-        </div>
-        <ul class="menu">
-            <li style="color: #f43f5e;" onclick="cikisYap()">🚪 Güvenli Çıkış</li>
-        </ul>
-    </div>
-
-    <div class="main-content">
-        <div class="topbar">
-            <div class="topbar-title" id="page-title">Genel Bakış</div>
-            <div class="user-badge">
-                <div class="user-dot"></div>
-                <span id="username-display"></span> &nbsp;|&nbsp; <span id="role-display" style="color: #c084fc; font-weight: 800;"></span>
-            </div>
-        </div>
-
-        <div class="dashboard-body">
+        if (data.success) {
+            // "admin-user-list", HTML tarafında üyelerin listeleneceği <div> veya <tbody> elementinin ID'si olmalı. 
+            // Kendine göre id adını (admin-user-list) değiştirebilirsin.
+            const userListDiv = document.getElementById('admin-user-list'); 
+            if (!userListDiv) return; // Eğer o sekmede değilsek hata vermesin
             
-            <div id="tab-ana" class="tab-content active">
-                <div class="grid-cards">
-                    <div class="card">
-                        <h4>Bağlantı Durumu</h4>
-                        <div class="value" style="color: #34d399;">CANLI & AKTİF</div>
+            userListDiv.innerHTML = ''; // Önce listeyi temizle
+            
+            for (const [email, details] of Object.entries(data.users)) {
+                userListDiv.innerHTML += `
+                    <div style="margin-bottom: 10px; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+                        <strong>Kullanıcı:</strong> ${email} <br>
+                        <strong>Mevcut Bot Limiti:</strong> ${details.botLimit} <br>
+                        
+                        <input type="number" id="limit-${email}" value="${details.botLimit}" placeholder="Yeni Limit" style="margin-top: 5px; padding: 5px;">
+                        <button onclick="updateUserLimit('${email}')" style="padding: 5px 10px; cursor: pointer;">Limiti Kaydet</button>
                     </div>
-                    <div class="card">
-                        <h4>Tanımlı Bot Limiti</h4>
-                        <div class="value" id="stat-max-limit">200</div>
-                    </div>
-                    <div class="card">
-                        <h4>Oyundaki Bot Sayısı</h4>
-                        <div class="value" id="aktif-bot-stat">0</div>
-                    </div>
-                </div>
-            </div>
+                `;
+            }
+        }
+    } catch (error) {
+        console.error('Kullanıcılar yüklenemedi:', error);
+    }
+}
 
-            <div id="tab-bot" class="tab-content">
-                <div class="section-box">
-                    <h3>Bot Kontrolü (<span id="user-max-limit-text">200</span> İsimlik Paket)</h3>
-                    <p style="color: #94a3b8;">Aşağıdaki kaydırıcıyı kullanarak sunucuya vermek istediğiniz bot sayısını seçin.</p>
-                    <div class="slider-container">
-                        <input type="range" id="botRange" min="0" max="200" value="0" oninput="sliderGuncelle(this.value)">
-                        <input type="number" id="botNumber" class="slider-input" min="0" max="200" value="0" oninput="inputGuncelle(this.value)">
-                    </div>
-                    <div class="btn-group">
-                        <button class="btn btn-start" onclick="botIslem('Başlatıldı')">Botları Sunucuya Yolla</button>
-                        <button class="btn btn-stop" onclick="botIslem('Durduruldu')">Tüm Botları Çek</button>
-                    </div>
-                </div>
-            </div>
-
-            <div id="tab-names" class="tab-content">
-                <div class="section-box">
-                    <h3>Atanmış Bot İsimleri</h3>
-                    <p style="color: #94a3b8;">Aşağıda sadece hesabınıza tanımlı miktar kadar bot ismi listelenir.</p>
-                    <textarea id="botNamesList" readonly placeholder="Yükleniyor..."></textarea>
-                    <div id="admin-name-edit" style="display:none; margin-top: 20px;">
-                        <button class="btn btn-primary" onclick="botIsimleriKaydet()">Tüm İsim Havuzunu Güncelle (Admin)</button>
-                    </div>
-                </div>
-            </div>
-
-            <div id="tab-api" class="tab-content">
-                <div class="section-box">
-                    <h3>Lisans & API Key</h3>
-                    <div style="background:#09051d; padding:20px; border-radius:14px; border:1px solid #7c3aed; color:#c084fc; font-family:monospace; font-size:18px; font-weight:bold;">
-                        brk_live_pgtphi2bts
-                    </div>
-                </div>
-            </div>
-
-            <div id="tab-uyeler" class="tab-content">
-                <div class="section-box">
-                    <h3>Üye Bot Limit Değiştirme</h3>
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>E-Posta / Kullanıcı</th>
-                                <th>Rol</th>
-                                <th>Bot Limiti</th>
-                                <th>İşlem</th>
-                            </tr>
-                        </thead>
-                        <tbody id="user-list-body"></tbody>
-                    </table>
-                </div>
-            </div>
-
-        </div>
-    </div>
-
-    <script>
-        const savedUser = localStorage.getItem('brk_user') || 'Geliştirici';
-        const savedRole = localStorage.getItem('brk_role') || 'Yönetici';
-        const savedEmail = localStorage.getItem('brk_email') || 'brkdevelopmentt@gmail.com';
+// "Limiti Kaydet" butonuna basıldığında çalışır
+async function updateUserLimit(email) {
+    const newLimit = document.getElementById(`limit-${email}`).value;
+    
+    try {
+        const response = await fetch('/api/update-user-limit', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email: email, limit: newLimit })
+        });
         
-        let userMaxBot = 200;
-
-        document.getElementById('username-display').innerText = savedUser;
-        document.getElementById('role-display').innerText = savedRole;
-
-        let users = JSON.parse(localStorage.getItem('brk_users')) || {};
-        if(savedRole === 'Yönetici') {
-            userMaxBot = 200;
-            document.getElementById('menu-uyeler').style.display = 'flex';
-            document.getElementById('admin-name-edit').style.display = 'block';
-            document.getElementById('botNamesList').removeAttribute('readonly');
-        } else if(users[savedEmail]) {
-            userMaxBot = users[savedEmail].botLimit || 10;
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('Başarılı: ' + result.message);
+            loadAdminUsers(); // Kayıt sonrası listeyi güncel değerlerle yenile
+        } else {
+            alert('Hata: ' + result.error);
         }
-
-        document.getElementById('stat-max-limit').innerText = userMaxBot;
-        document.getElementById('user-max-limit-text').innerText = userMaxBot;
-        document.getElementById('botRange').max = userMaxBot;
-        document.getElementById('botNumber').max = userMaxBot;
-
-        function botIsimleriGetir() {
-            fetch('/api/get-panel-bot-names')
-                .then(res => res.json())
-                .then(data => {
-                    if(data.success && data.names) {
-                        let allNames = data.names.split('\n').filter(n => n.trim() !== '');
-                        let allowedNames = allNames.slice(0, userMaxBot).join('\n');
-                        document.getElementById('botNamesList').value = allowedNames;
-                    }
-                });
-        }
-        botIsimleriGetir();
-
-        function botIsimleriKaydet() {
-            const names = document.getElementById('botNamesList').value;
-            fetch('/api/save-bot-names', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ names: names })
-            })
-            .then(res => res.json())
-            .then(data => alert(data.message));
-        }
-
-        function tabDegis(tabAdi, element) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            document.querySelectorAll('#side-menu li').forEach(el => el.classList.remove('active'));
-            document.getElementById('tab-' + tabAdi).classList.add('active');
-            element.classList.add('active');
-        }
-
-        function sliderGuncelle(val) { document.getElementById('botNumber').value = val; }
-        function inputGuncelle(val) {
-            if(val > userMaxBot) val = userMaxBot;
-            if(val < 0) val = 0;
-            document.getElementById('botRange').value = val;
-        }
-
-        function botIslem(durum) {
-            const count = document.getElementById('botNumber').value;
-            fetch('/api/set-bot-count', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ count: durum === 'Başlatıldı' ? count : 0 })
-            })
-            .then(res => res.json())
-            .then(data => {
-                document.getElementById('aktif-bot-stat').innerText = data.count;
-                alert(`BRK DEVS: ${data.count} Adet Bot Aktif Edildi.`);
-            });
-        }
-
-        function cikisYap() {
-            localStorage.clear();
-            window.location.href = '/';
-        }
-    </script>
-</body>
-</html>
+    } catch (error) {
+        console.error('Limit güncellenirken bir sorun oluştu:', error);
+        alert('Sunucu ile bağlantı koptu.');
+    }
+}
+</script>
