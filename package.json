@@ -1,7 +1,7 @@
 {
   "name": "brk-development",
   "version": "1.0.0",
-  "description": "Brk Development Panel",
+  "description": "Brk Development Web & Bot Control Panel",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"

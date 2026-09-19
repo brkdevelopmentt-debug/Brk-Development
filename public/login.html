@@ -7,40 +7,31 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background: #050810; color: #fff; display: flex; justify-content: center; align-items: center; height: 100vh; background-image: radial-gradient(circle at 50% 50%, #0f172a 0%, #050810 100%); }
-        
-        .auth-container { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(20px); padding: 40px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); width: 420px; border: 1px solid rgba(56, 189, 248, 0.15); text-align: center; position: relative; overflow: hidden; }
-        
+        .auth-container { background: rgba(15, 23, 42, 0.7); backdrop-filter: blur(20px); padding: 40px; border-radius: 20px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6); width: 420px; border: 1px solid rgba(56, 189, 248, 0.15); text-align: center; }
         .logo-area { margin-bottom: 25px; }
         .logo-area img { width: 110px; height: 110px; border-radius: 50%; border: 2px solid #38bdf8; box-shadow: 0 0 20px rgba(56, 189, 248, 0.5); margin-bottom: 15px; object-fit: cover; }
         .logo-area h1 { font-size: 26px; color: #38bdf8; font-weight: 800; letter-spacing: 1px; }
-        
         .input-group { text-align: left; margin-bottom: 15px; }
         .input-group label { display: block; font-size: 13px; color: #94a3b8; margin-bottom: 8px; font-weight: 600; }
         input { width: 100%; padding: 14px 16px; background: rgba(3, 7, 18, 0.8); border: 1px solid rgba(255, 255, 255, 0.1); color: white; border-radius: 10px; outline: none; transition: 0.3s; font-size: 14px; }
         input:focus { border-color: #38bdf8; box-shadow: 0 0 12px rgba(56, 189, 248, 0.3); }
-        
         button { width: 100%; padding: 14px; background: linear-gradient(135deg, #0ea5e9, #2563eb); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: bold; margin-top: 10px; font-size: 15px; transition: 0.3s; box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4); }
         button:hover { opacity: 0.9; transform: translateY(-2px); }
-        
         .link-text { color: #38bdf8; font-size: 13px; cursor: pointer; margin-top: 15px; display: inline-block; transition: 0.2s; }
         .link-text:hover { color: #e0f2fe; text-decoration: underline; }
-        
         .view { display: none; }
         .view.active { display: block; animation: fadeIn 0.4s; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        
         .flex-between { display: flex; justify-content: space-between; margin-top: 15px; }
     </style>
 </head>
 <body>
-
     <div class="auth-container">
         <div class="logo-area">
             <img src="logo.png" alt="Logo" onerror="this.src='https://via.placeholder.com/110/0f172a/38bdf8?text=BRK'">
             <h1>Brk Development</h1>
         </div>
 
-        <!-- 1. GİRİŞ EKRANI -->
         <div id="view-login" class="view active">
             <div class="input-group">
                 <label>Gmail Adresi</label>
@@ -57,7 +48,6 @@
             </div>
         </div>
 
-        <!-- 2. KAYIT EKRANI (Aşama 1: Mail Onayı) -->
         <div id="view-register" class="view">
             <h3 style="color: #fff; margin-bottom: 15px;">Kayıt Ol</h3>
             <div class="input-group">
@@ -70,7 +60,6 @@
             </div>
         </div>
 
-        <!-- 3. KAYIT EKRANI (Aşama 2: Kodu Gir ve Şifre Belirle) -->
         <div id="view-register-step2" class="view">
             <h3 style="color: #fff; margin-bottom: 15px;">Hesabı Tamamla</h3>
             <p style="font-size: 12px; color:#34d399; margin-bottom: 15px;">Mailinize gelen doğrulama kodunu giriniz.</p>
@@ -92,7 +81,6 @@
             </div>
         </div>
 
-        <!-- 4. ŞİFREMİ UNUTTUM EKRANI -->
         <div id="view-forgot" class="view">
             <h3 style="color: #fff; margin-bottom: 15px;">Şifre Sıfırlama</h3>
             <div class="input-group">
@@ -105,7 +93,6 @@
             </div>
         </div>
 
-        <!-- 5. YENİ ŞİFRE BELİRLEME EKRANI -->
         <div id="view-reset" class="view">
             <h3 style="color: #fff; margin-bottom: 15px;">Yeni Şifre Belirle</h3>
             <div class="input-group">
@@ -118,7 +105,6 @@
             </div>
             <button onclick="sifreyiSifirla()">Şifreyi Güncelle</button>
         </div>
-
     </div>
 
     <script>
@@ -136,7 +122,6 @@
 
             if(!email || !pass) return alert("E-mail ve şifre boş bırakılamaz!");
 
-            // Yönetici Hesabı (brkdevelopmentt@gmail.com / 145306)
             if(email === 'brkdevelopmentt@gmail.com' && pass === '145306') {
                 localStorage.setItem('brk_user', 'Berke');
                 localStorage.setItem('brk_email', email);
@@ -145,7 +130,6 @@
                 return;
             }
 
-            // Normal Kullanıcılar
             let users = JSON.parse(localStorage.getItem('brk_users')) || {};
             if(users[email] && users[email].password === pass) {
                 localStorage.setItem('brk_user', users[email].name);
@@ -189,7 +173,7 @@
             if(!email) return alert("Gmail adresi giriniz!");
             
             islemYapanMail = email;
-            alert(`[Brk Development Mail Servisi]\n\n${email} adresine şifre sıfırlama linki gönderildi. Tıkladınız varsayılıyor.`);
+            alert(`[Brk Development Mail Servisi]\n\n${email} adresine şifre sıfırlama adımları iletildi.`);
             switchView('view-reset');
         }
 
