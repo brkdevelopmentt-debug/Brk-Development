@@ -46,12 +46,12 @@
         .btn-stop { background: linear-gradient(135deg, #ef4444, #dc2626); color: white; }
         .btn-primary { background: linear-gradient(135deg, #0ea5e9, #2563eb); color: white; }
 
-        textarea { width: 100%; height: 180px; background: rgba(3, 7, 18, 0.8); border: 1px solid rgba(56,189,248,0.2); border-radius: 10px; color: #38bdf8; padding: 15px; font-family: monospace; font-size: 14px; outline: none; resize: vertical; margin-top: 10px; }
-        textarea:focus { border-color: #38bdf8; }
+        textarea { width: 100%; height: 220px; background: rgba(3, 7, 18, 0.8); border: 1px solid rgba(56,189,248,0.2); border-radius: 10px; color: #38bdf8; padding: 15px; font-family: monospace; font-size: 14px; outline: none; resize: vertical; margin-top: 10px; }
 
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 16px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.05); }
         th { color: #94a3b8; font-weight: 700; font-size: 13px; text-transform: uppercase; }
+        input.limit-input { width: 80px; padding: 8px; background: #030712; border: 1px solid #38bdf8; color: #fff; border-radius: 6px; text-align: center; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -66,7 +66,7 @@
                 <li onclick="tabDegis('bot', this)">🤖 Bot Yönetimi</li>
                 <li onclick="tabDegis('names', this)">📝 Bot İsimleri</li>
                 <li onclick="tabDegis('api', this)">🔑 API Anahtarı</li>
-                <li id="menu-uyeler" style="display:none;" onclick="tabDegis('uyeler', this)">👥 Üye Yönetimi</li>
+                <li id="menu-uyeler" style="display:none;" onclick="tabDegis('uyeler', this)">👥 Üye & Bot Limit Yönetimi</li>
             </ul>
         </div>
         <ul class="menu">
@@ -90,28 +90,24 @@
                 <div class="grid-cards">
                     <div class="card">
                         <h4>API Durumu</h4>
-                        <div class="value" style="color: #34d399; font-size: 24px;">Aktif & Stabil</div>
+                        <div class="value" style="color: #34d399; font-size: 24px;">Aktif & Bağlı</div>
                     </div>
                     <div class="card">
-                        <h4>Maksimum Bot Sınırı</h4>
-                        <div class="value">200</div>
+                        <h4>Bot Paket Limitiniz</h4>
+                        <div class="value" id="stat-max-limit">200</div>
                     </div>
                     <div class="card">
                         <h4>Aktif Bot Sayısı</h4>
                         <div class="value" id="aktif-bot-stat">0</div>
                     </div>
                 </div>
-                <div class="section-box">
-                    <h3>Sistem Durum Raporu</h3>
-                    <p style="color: #94a3b8; font-size: 15px; line-height: 1.8;">Brk Development altyapısı sorunsuz çalışıyor. Bot Yönetimi sekmesinden bot adedini, Bot İsimleri sekmesinden ise oyuna girecek bot takma adlarını düzenleyebilirsiniz.</p>
-                </div>
             </div>
 
             <!-- 2. BOT YÖNETİMİ -->
             <div id="tab-bot" class="tab-content">
                 <div class="section-box">
-                    <h3>Bot Komuta Merkezi (Max: 200)</h3>
-                    <p style="color: #94a3b8; font-size: 14px;">Barı kaydırarak veya doğrudan sayı girerek aktif edilecek bot miktarını belirleyin.</p>
+                    <h3>Bot Komuta Merkezi (<span id="user-max-limit-text">200</span> Bot Hak)</h3>
+                    <p style="color: #94a3b8; font-size: 14px;">Tanımlı bot paketi limitinize kadar bot miktarını belirleyebilirsiniz.</p>
                     <div class="slider-container">
                         <input type="range" id="botRange" min="0" max="200" value="0" oninput="sliderGuncelle(this.value)">
                         <input type="number" id="botNumber" class="slider-input" min="0" max="200" value="0" oninput="inputGuncelle(this.value)">
@@ -123,14 +119,14 @@
                 </div>
             </div>
 
-            <!-- 3. BOT İSİMLERİ (YENİ SEKME) -->
+            <!-- 3. BOT İSİMLERİ -->
             <div id="tab-names" class="tab-content">
                 <div class="section-box">
-                    <h3>Bot İsim Listesi Yönetimi</h3>
-                    <p style="color: #94a3b8; font-size: 14px;">Her satıra 1 tane bot ismi gelecek şekilde listenizi oluşturun. Oyuna giren botlar bu listeden sırayla isim alacaktır.</p>
-                    <textarea id="botNamesList" placeholder="Örn:&#10;Ahmet_Yilmaz&#10;Mehmet_Kaya&#10;Brk_Player_1"></textarea>
-                    <div style="margin-top: 15px;">
-                        <button class="btn btn-primary" onclick="botIsimleriKaydet()">İsim Listesini Kaydet</button>
+                    <h3>Kullanılabilir Bot İsim Listesi</h3>
+                    <p style="color: #94a3b8; font-size: 14px;">Paketinizdeki bot sayısı kadar kullanılabilir isim aşağıda listelenmiştir.</p>
+                    <textarea id="botNamesList" readonly placeholder="Bot isimleri yükleniyor..."></textarea>
+                    <div id="admin-name-edit" style="display:none; margin-top: 15px;">
+                        <button class="btn btn-primary" onclick="botIsimleriKaydet()">İsim Listesini Değiştir (Sadece Admin)</button>
                     </div>
                 </div>
             </div>
@@ -138,36 +134,29 @@
             <!-- 4. API ANAHTARI -->
             <div id="tab-api" class="tab-content">
                 <div class="section-box">
-                    <h3>API Anahtarı Yönetimi</h3>
-                    <p style="color: #94a3b8; font-size: 14px; margin-bottom: 25px;">Güvenliğiniz için API anahtarınızı sadece 2 günde bir kez değiştirebilirsiniz.</p>
+                    <h3>API Anahtarı</h3>
                     <div style="display:flex; gap:15px; align-items:center; background:rgba(3, 7, 18, 0.8); padding:15px 20px; border-radius:10px; border:1px solid rgba(56,189,248,0.2);">
-                        <span id="apiKeyDisplay" style="flex:1; font-family:monospace; color:#38bdf8; font-size:16px;">brk_live_9f8a7b6c5d43210fedcba</span>
-                        <button class="btn btn-primary" onclick="ApiKeyDegistir()">Yenile / Değiştir</button>
+                        <span id="apiKeyDisplay" style="flex:1; font-family:monospace; color:#38bdf8; font-size:16px;">brk_live_pgtphi2bts</span>
                     </div>
-                    <p style="font-size: 13px; color: #f59e0b; margin-top: 15px;" id="cooldownMsg"></p>
                 </div>
             </div>
 
-            <!-- 5. ÜYE YÖNETİMİ -->
+            <!-- 5. ÜYE & BOT LİMİT YÖNETİMİ (SADECE ADMİN) -->
             <div id="tab-uyeler" class="tab-content">
                 <div class="section-box">
-                    <h3>Üye ve Yetki Yönetim Paneli</h3>
+                    <h3>Müşteri & Bot Limiti Yönetimi (Admin Paneli)</h3>
+                    <p style="color: #94a3b8; font-size: 14px; margin-bottom: 20px;">Kullanıcıların satın aldığı bot paket miktarlarını buradan tanımlayın.</p>
                     <table>
                         <thead>
                             <tr>
-                                <th>Kullanıcı</th>
-                                <th>Rolü</th>
-                                <th>Bot Limiti</th>
+                                <th>Kullanıcı Mail</th>
+                                <th>Rol</th>
+                                <th>Tanımlı Bot Limiti</th>
                                 <th>İşlem</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr>
-                                <td>Berke (Kurucu)</td>
-                                <td><span style="color: #38bdf8; font-weight: bold;">Yönetici</span></td>
-                                <td>200 Bot</td>
-                                <td><span style="color: #10b981;">Tam Yetkili</span></td>
-                            </tr>
+                        <tbody id="user-list-body">
+                            <!-- JS ile dolacak -->
                         </tbody>
                     </table>
                 </div>
@@ -179,24 +168,47 @@
     <script>
         const savedUser = localStorage.getItem('brk_user');
         const savedRole = localStorage.getItem('brk_role');
+        const savedEmail = localStorage.getItem('brk_email');
         
+        let userMaxBot = 200;
+
         if(!savedUser) {
             window.location.href = '/';
         } else {
             document.getElementById('username-display').innerText = savedUser;
             document.getElementById('role-display').innerText = savedRole;
+
+            // Kullanıcının Özel Limitini Çek
+            let users = JSON.parse(localStorage.getItem('brk_users')) || {};
             if(savedRole === 'Yönetici') {
+                userMaxBot = 200;
                 document.getElementById('menu-uyeler').style.display = 'flex';
+                document.getElementById('admin-name-edit').style.display = 'block';
+                document.getElementById('botNamesList').removeAttribute('readonly');
+            } else if(users[savedEmail]) {
+                userMaxBot = users[savedEmail].botLimit || 10; // Varsayılan 10 bot
+            } else {
+                userMaxBot = 10;
             }
+
+            // Sayfadaki Sınırları Ayarla
+            document.getElementById('stat-max-limit').innerText = userMaxBot;
+            document.getElementById('user-max-limit-text').innerText = userMaxBot;
+            document.getElementById('botRange').max = userMaxBot;
+            document.getElementById('botNumber').max = userMaxBot;
+
+            uyeleriListele();
         }
 
-        // Bot İsimlerini Sunucudan Çek
+        // İsimleri Çek ve Kullanıcının Limiti Kadar Göster
         function botIsimleriGetir() {
-            fetch('/api/bot-names')
+            fetch('/api/get-panel-bot-names')
                 .then(res => res.json())
                 .then(data => {
-                    if(data.success) {
-                        document.getElementById('botNamesList').value = data.names;
+                    if(data.success && data.names) {
+                        let allNames = data.names.split('\n').filter(n => n.trim() !== '');
+                        let allowedNames = allNames.slice(0, userMaxBot).join('\n');
+                        document.getElementById('botNamesList').value = allowedNames;
                     }
                 });
         }
@@ -210,56 +222,79 @@
                 body: JSON.stringify({ names: names })
             })
             .then(res => res.json())
-            .then(data => {
-                alert(data.message);
-            });
+            .then(data => alert(data.message));
+        }
+
+        function uyeleriListele() {
+            let users = JSON.parse(localStorage.getItem('brk_users')) || {};
+            let tbody = document.getElementById('user-list-body');
+            tbody.innerHTML = `
+                <tr>
+                    <td>brkdevelopmentt@gmail.com (Kurucu)</td>
+                    <td><span style="color:#38bdf8;">Yönetici</span></td>
+                    <td>200 Bot (Sınırsız)</td>
+                    <td><span style="color:#10b981;">Tam Yetki</span></td>
+                </tr>
+            `;
+
+            for(let mail in users) {
+                let u = users[mail];
+                let limit = u.botLimit || 10;
+                tbody.innerHTML += `
+                    <tr>
+                        <td>${mail} (${u.name})</td>
+                        <td>${u.role}</td>
+                        <td>
+                            <input type="number" class="limit-input" value="${limit}" id="limit-${mail}">
+                        </td>
+                        <td>
+                            <button class="btn btn-primary" style="padding:6px 12px; font-size:12px;" onclick="limitGuncelle('${mail}')">Limiti Kaydet</button>
+                        </td>
+                    </tr>
+                `;
+            }
+        }
+
+        function limitGuncelle(mail) {
+            let newLimit = parseInt(document.getElementById('limit-' + mail).value);
+            let users = JSON.parse(localStorage.getItem('brk_users')) || {};
+            if(users[mail]) {
+                users[mail].botLimit = newLimit;
+                localStorage.setItem('brk_users', JSON.stringify(users));
+                alert(`${mail} adresinin bot limiti ${newLimit} olarak güncellendi!`);
+            }
         }
 
         function tabDegis(tabAdi, element) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('#side-menu li').forEach(el => el.classList.remove('active'));
-            
             document.getElementById('tab-' + tabAdi).classList.add('active');
             element.classList.add('active');
-
-            const titles = { 'ana': 'Genel Bakış', 'bot': 'Bot Yönetimi', 'names': 'Bot İsim Listesi', 'api': 'API Anahtarı Yönetimi', 'uyeler': 'Üye Yönetimi' };
-            document.getElementById('page-title').innerText = titles[tabAdi];
         }
 
         function sliderGuncelle(val) { document.getElementById('botNumber').value = val; }
         function inputGuncelle(val) {
-            if(val > 200) val = 200;
+            if(val > userMaxBot) val = userMaxBot;
             if(val < 0) val = 0;
             document.getElementById('botRange').value = val;
         }
 
         function botIslem(durum) {
             const count = document.getElementById('botNumber').value;
-            document.getElementById('aktif-bot-stat').innerText = durum === 'Başlatıldı' ? count : '0';
-            alert(`Brk Development: ${count} adet bot başarıyla ${durum}.`);
-        }
-
-        function ApiKeyDegistir() {
-            const lastChange = localStorage.getItem('brk_apikey_time');
-            const now = new Date().getTime();
-            const ikiGunmiligram = 2 * 24 * 60 * 60 * 1000;
-
-            if(lastChange && (now - lastChange < ikiGunmiligram)) {
-                const kalanSureSaat = Math.ceil((ikiGunmiligram - (now - lastChange)) / (1000 * 60 * 60));
-                document.getElementById('cooldownMsg').innerText = `⚠️ API anahtarını 2 günde bir değiştirebilirsiniz. Kalan süre: ${kalanSureSaat} saat.`;
-                return;
-            }
-
-            const yeniKey = 'brk_live_' + Math.random().toString(36).substring(2, 15);
-            document.getElementById('apiKeyDisplay').innerText = yeniKey;
-            localStorage.setItem('brk_apikey_time', now);
-            document.getElementById('cooldownMsg').innerText = "✅ API anahtarı yenilendi!";
+            fetch('/api/set-bot-count', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ count: durum === 'Başlatıldı' ? count : 0 })
+            })
+            .then(res => res.json())
+            .then(data => {
+                document.getElementById('aktif-bot-stat').innerText = data.count;
+                alert(`Brk Development: ${data.count} adet bot başarıyla ${durum}.`);
+            });
         }
 
         function cikisYap() {
-            localStorage.removeItem('brk_user');
-            localStorage.removeItem('brk_role');
-            localStorage.removeItem('brk_email');
+            localStorage.clear();
             window.location.href = '/';
         }
     </script>
