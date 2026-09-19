@@ -5,29 +5,24 @@ const fs = require('fs');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Varsayılan Ayarlar
 let currentApiKey = "brk_live_pgtphi2bts";
 let activeBotCount = 0;
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// CORS İzinleri (FiveM İ istekleri için)
 app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "*");
     res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
     next();
 });
 
-// Sayfa Yönlendirmeleri
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'login.html')));
 app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'dashboard.html')));
 
-// --- FIVEM SCRIPTININ BAGLANDIGI ENDPOINT ---
 app.get('/api/bot-names', (req, res) => {
     const clientKey = req.headers['authorization'];
     
-    // API Key Kontrolü
     if (clientKey !== currentApiKey) {
         return res.status(401).json({ success: false, message: 'Geçersiz API Key!' });
     }
@@ -45,21 +40,18 @@ app.get('/api/bot-names', (req, res) => {
     });
 });
 
-// Bot Sayısını Güncelleme (Panelden Tıklanınca)
 app.post('/api/set-bot-count', (req, res) => {
     const { count } = req.body;
     activeBotCount = parseInt(count) || 0;
     res.json({ success: true, count: activeBotCount });
 });
 
-// Bot İsimlerini Getir (Panel İçin)
 app.get('/api/get-panel-bot-names', (req, res) => {
     const filePath = path.join(__dirname, 'bot_names.txt');
     const names = fs.existsSync(filePath) ? fs.readFileSync(filePath, 'utf8') : '';
     res.json({ success: true, names: names });
 });
 
-// Bot İsimlerini Kaydet
 app.post('/api/save-bot-names', (req, res) => {
     const { names } = req.body;
     const filePath = path.join(__dirname, 'bot_names.txt');
