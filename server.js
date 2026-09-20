@@ -17,7 +17,7 @@ app.use((req, res, next) => {
 });
 
 app.use(express.json());
-app.use(express.static('public')); // public klasöründeki dosyaları (index.html, dashboard.html vs.) dışarı sunar
+app.use(express.static(path.join(__dirname, 'public'))); // public klasörünü statik olarak sunar
 
 // Veritabanı niyetine kullanılacak JSON dosya yolları
 const dataFilePath = path.join(__dirname, 'data.json');
@@ -32,7 +32,26 @@ if (!fs.existsSync(usersFilePath)) {
 }
 
 // =========================================================
-// 1. FİVEM SCRIPT (server.lua) İÇİN BOT APİ ENDPOINTLERİ
+// SAYFA ROTALARI (PAGE ROUTES - Cannot GET /dashboard ÇÖZÜMÜ)
+// =========================================================
+
+// Dashboard Sayfası
+app.get('/dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'dashboard.html'));
+});
+
+// Login Sayfası
+app.get('/login', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// Ana Sayfa (Eğer index.html varsa)
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
+// =========================================================
+// 1. FİVEM SCRIPT (server.lua) İÇİN BOT API ENDPOINTLERİ
 // =========================================================
 
 // Bot verilerini oku (FiveM scripti buraya GET isteği atar)
@@ -67,7 +86,7 @@ app.post('/api/bot-names', (req, res) => {
 });
 
 // =========================================================
-// 2. ADMİN PANELİ VE ÜYE LİMİT KONTROL APİ ENDPOINTLERİ
+// 2. ADMİN PANELİ VE ÜYE LİMİT KONTROL API ENDPOINTLERİ
 // =========================================================
 
 // Tüm kayıtlı üyeleri ve limitlerini getir
